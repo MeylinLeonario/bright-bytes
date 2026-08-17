@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   ArrowLeft,
@@ -14,32 +15,88 @@ import {
   FileText,
   CheckCircle2,
 } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
-const course = {
-  id: "2",
-  level: "A2",
-  title: "Everyday English",
-  description:
-    "Learn to communicate comfortably in everyday situations with practical grammar, vocabulary, reading, writing and speaking practice.",
-  status: "Published",
-  lessons: 10,
-  publishedLessons: 7,
-  students: 84,
+type Lesson = {
+  id: string;
+  title: string;
+  grammarPoint: string;
+  grammarExplanation: string;
+  order: number;
+  isPublished: boolean;
+};
+
+type Course = {
+  id: string;
+  level: string;
+  title: string;
+  description: string;
+  isPublished: boolean;
+  lessons: Lesson[];
 };
 
 export default function CoursePage() {
   const params = useParams();
   const courseId = params.courseId as string;
 
+  const [course, setCourse] = useState<Course | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function loadCourse() {
+      try {
+        const data = await apiFetch<Course>(
+          `/api/admin/courses/${courseId}`
+        );
+
+        setCourse(data);
+      } catch (err) {
+        console.error(err);
+        setError("Could not load course.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (courseId) {
+      loadCourse();
+    }
+  }, [courseId]);
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-[#faf9f7] px-6 py-8 md:px-10 lg:px-14">
+        <div className="mx-auto max-w-7xl text-sm font-medium text-slate-500">
+          Loading course...
+        </div>
+      </main>
+    );
+  }
+
+  if (error || !course) {
+    return (
+      <main className="min-h-screen bg-[#faf9f7] px-6 py-8 md:px-10 lg:px-14">
+        <div className="mx-auto max-w-7xl rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+          {error || "Course not found."}
+        </div>
+      </main>
+    );
+  }
+
+  const totalLessons = course.lessons.length;
+  const publishedLessons = course.lessons.filter(
+    (lesson) => lesson.isPublished
+  ).length;
+
   const progress =
-    course.lessons === 0
+    totalLessons === 0
       ? 0
-      : Math.round((course.publishedLessons / course.lessons) * 100);
+      : Math.round((publishedLessons / totalLessons) * 100);
 
   return (
     <main className="min-h-screen bg-[#faf9f7] px-6 py-8 md:px-10 lg:px-14">
       <div className="mx-auto max-w-7xl">
-        {/* Back */}
         <Link
           href="/admin/courses"
           className="mb-7 inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-slate-900"
@@ -48,7 +105,6 @@ export default function CoursePage() {
           Back to courses
         </Link>
 
-        {/* Header */}
         <section className="mb-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex gap-5">
@@ -59,10 +115,12 @@ export default function CoursePage() {
               <div>
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <span className="text-xs font-bold uppercase tracking-widest text-purple-600">
-                    Course {courseId}
+                    Course {course.level}
                   </span>
 
-                  <StatusBadge status={course.status} />
+                  <StatusBadge
+                    status={course.isPublished ? "Published" : "Draft"}
+                  />
                 </div>
 
                 <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
@@ -93,24 +151,23 @@ export default function CoursePage() {
           </div>
         </section>
 
-        {/* Stats */}
         <section className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             icon={<Layers3 size={20} />}
             label="Total lessons"
-            value={course.lessons.toString()}
+            value={totalLessons.toString()}
           />
 
           <StatCard
             icon={<CheckCircle2 size={20} />}
             label="Published lessons"
-            value={course.publishedLessons.toString()}
+            value={publishedLessons.toString()}
           />
 
           <StatCard
             icon={<Users size={20} />}
             label="Students"
-            value={course.students.toString()}
+            value="0"
           />
 
           <StatCard
@@ -120,9 +177,7 @@ export default function CoursePage() {
           />
         </section>
 
-        {/* Main content */}
         <section className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-          {/* Lessons */}
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -140,7 +195,7 @@ export default function CoursePage() {
               </div>
 
               <Link
-                href={`/admin/courses/${courseId}/lessons/new`}
+                href={`/admin/courses/lessons/new?courseId=${courseId}`}
                 className="flex w-fit items-center gap-2 rounded-2xl bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-purple-700"
               >
                 <Plus size={17} />
@@ -148,7 +203,6 @@ export default function CoursePage() {
               </Link>
             </div>
 
-            {/* Progress */}
             <div className="mb-6 rounded-2xl bg-slate-50 p-4">
               <div className="mb-2 flex items-center justify-between">
                 <p className="text-sm font-semibold text-slate-600">
@@ -156,7 +210,7 @@ export default function CoursePage() {
                 </p>
 
                 <span className="text-sm font-bold text-slate-800">
-                  {course.publishedLessons}/{course.lessons}
+                  {publishedLessons}/{totalLessons}
                 </span>
               </div>
 
@@ -168,9 +222,41 @@ export default function CoursePage() {
               </div>
             </div>
 
-            {/* Shortcut */}
+            {course.lessons.length > 0 && (
+              <div className="mb-6 space-y-3">
+                {course.lessons
+                  .slice()
+                  .sort((a, b) => a.order - b.order)
+                  .map((lesson) => (
+                    <div
+                      key={lesson.id}
+                      className="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-3"
+                    >
+                      <div>
+                        <p className="font-semibold text-slate-800">
+                          {lesson.order}. {lesson.title}
+                        </p>
+                        <p className="mt-1 text-sm text-slate-400">
+                          {lesson.grammarPoint}
+                        </p>
+                      </div>
+
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-bold ${
+                          lesson.isPublished
+                            ? "bg-emerald-50 text-emerald-600"
+                            : "bg-amber-50 text-amber-600"
+                        }`}
+                      >
+                        {lesson.isPublished ? "Published" : "Draft"}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            )}
+
             <Link
-              href={`/admin/courses/${courseId}/lessons`}
+              href={`/admin/courses/lessons?courseId=${courseId}`}
               className="group flex items-center justify-between rounded-2xl border border-slate-200 p-5 transition hover:border-purple-200 hover:bg-purple-50/40"
             >
               <div className="flex items-center gap-4">
@@ -195,7 +281,6 @@ export default function CoursePage() {
             </Link>
           </div>
 
-          {/* Course info */}
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-sm font-semibold text-purple-600">
               Course details
@@ -207,23 +292,13 @@ export default function CoursePage() {
 
             <div className="mt-6 space-y-5">
               <InfoRow label="Level" value={course.level} />
-
-              <InfoRow label="Status" value={course.status} />
-
               <InfoRow
-                label="Lessons"
-                value={course.lessons.toString()}
+                label="Status"
+                value={course.isPublished ? "Published" : "Draft"}
               />
-
-              <InfoRow
-                label="Published"
-                value={course.publishedLessons.toString()}
-              />
-
-              <InfoRow
-                label="Students enrolled"
-                value={course.students.toString()}
-              />
+              <InfoRow label="Lessons" value={totalLessons.toString()} />
+              <InfoRow label="Published" value={publishedLessons.toString()} />
+              <InfoRow label="Students enrolled" value="0" />
             </div>
 
             <div className="mt-7 border-t border-slate-100 pt-6">
@@ -254,9 +329,7 @@ function StatCard({
         {icon}
       </div>
 
-      <p className="text-2xl font-bold text-slate-900">
-        {value}
-      </p>
+      <p className="text-2xl font-bold text-slate-900">{value}</p>
 
       <p className="mt-1 text-sm font-medium text-slate-400">
         {label}
@@ -274,24 +347,23 @@ function InfoRow({
 }) {
   return (
     <div className="flex items-center justify-between gap-4">
-      <span className="text-sm text-slate-400">
-        {label}
-      </span>
-
-      <span className="text-sm font-semibold text-slate-700">
-        {value}
-      </span>
+      <span className="text-sm text-slate-400">{label}</span>
+      <span className="text-sm font-semibold text-slate-700">{value}</span>
     </div>
   );
 }
 
-function StatusBadge({
-  status,
-}: {
-  status: string;
-}) {
+function StatusBadge({ status }: { status: string }) {
+  const published = status === "Published";
+
   return (
-    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-600">
+    <span
+      className={`rounded-full px-3 py-1 text-xs font-bold ${
+        published
+          ? "bg-emerald-50 text-emerald-600"
+          : "bg-amber-50 text-amber-600"
+      }`}
+    >
       {status}
     </span>
   );

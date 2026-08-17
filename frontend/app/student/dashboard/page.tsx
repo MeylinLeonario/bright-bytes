@@ -20,35 +20,15 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useEffect, useState } from "react";
-import { getCurrentUser } from "@/lib/api";
-import type { CurrentUser } from "@/lib/api";
+import { getCurrentUser, getStudentDashboard } from "@/lib/api";
+import type { CurrentUser, StudentDashboardData } from "@/lib/api";
 
-const weekDays = [
-  { day: "Mon", completed: true },
-  { day: "Tue", completed: true },
-  { day: "Wed", completed: false },
-  { day: "Thu", completed: true },
-  { day: "Fri", completed: false },
-];
-
-const recentActivity = [
-  {
-    lesson: "Asking for directions",
-    date: "Yesterday",
-  },
-  {
-    lesson: "Present continuous",
-    date: "Aug 14",
-  },
-  {
-    lesson: "Daily routines",
-    date: "Aug 13",
-  },
-];
 
 export default function StudentDashboard() {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
+  const [dashboard, setDashboard] = useState<StudentDashboardData | null>(null);
+  const [loadingDashboard, setLoadingDashboard] = useState(true);
 
   useEffect(() => {
     getCurrentUser()
@@ -62,6 +42,46 @@ export default function StudentDashboard() {
         setLoadingUser(false);
       });
   }, []);
+
+  useEffect(() => {
+    getStudentDashboard()
+      .then(setDashboard)
+      .catch((error) => {
+        console.error("Error loading student dashboard:", error);
+      })
+      .finally(() => {
+        setLoadingDashboard(false);
+      });
+  }, []);
+
+  const formatActivityDate = (completedAt: string) => {
+    const date = new Date(completedAt);
+    const today = new Date();
+
+    const todayOnly = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
+
+    const dateOnly = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate()
+    );
+
+    const differenceInDays = Math.round(
+      (todayOnly.getTime() - dateOnly.getTime()) / 86400000
+    );
+
+    if (differenceInDays === 0) return "Today";
+    if (differenceInDays === 1) return "Yesterday";
+
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+  };
 
   return (
     <main className="min-h-screen bg-muted/30">
@@ -92,7 +112,13 @@ export default function StudentDashboard() {
             </CardHeader>
 
             <CardContent className="px-5 pb-4">
-              <div className="text-2xl font-bold">12 days</div>
+              <div className="text-2xl font-bold">
+                {loadingDashboard
+                  ? "..."
+                  : `${dashboard?.streak ?? 0} ${
+                      dashboard?.streak === 1 ? "day" : "days"
+                    }`}
+              </div>
 
               <p className="mt-1 text-xs text-muted-foreground">
                 Keep your streak alive
@@ -111,7 +137,9 @@ export default function StudentDashboard() {
             </CardHeader>
 
             <CardContent className="px-5 pb-4">
-              <div className="text-2xl font-bold">24</div>
+              <div className="text-2xl font-bold">
+                {loadingDashboard ? "..." : dashboard?.lessonsCompleted ?? 0}
+              </div>
 
               <p className="mt-1 text-xs text-muted-foreground">
                 Across your courses
@@ -130,7 +158,9 @@ export default function StudentDashboard() {
             </CardHeader>
 
             <CardContent className="px-5 pb-4">
-              <div className="text-2xl font-bold">184</div>
+              <div className="text-2xl font-bold">
+                {loadingDashboard ? "..." : dashboard?.wordsLearned ?? 0}
+              </div>
 
               <p className="mt-1 text-xs text-muted-foreground">
                 Vocabulary practiced
@@ -147,33 +177,43 @@ export default function StudentDashboard() {
                 <div className="flex-1">
                   <Badge variant="secondary">Continue learning</Badge>
 
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    Unit 3 · Lesson 4
-                  </p>
+                  {loadingDashboard ? (
+                    <p className="mt-3 text-sm text-muted-foreground">
+                      Loading your next lesson...
+                    </p>
+                  ) : dashboard?.continueLesson ? (
+                    <>
+                      <p className="mt-3 text-xs text-muted-foreground">
+                        Lesson {dashboard.continueLesson.order}
+                      </p>
 
-                  <h2 className="mt-1 text-xl font-semibold">
-                    Present Perfect
-                  </h2>
+                      <h2 className="mt-1 text-xl font-semibold">
+                        {dashboard.continueLesson.title}
+                      </h2>
 
-                  <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                    Continue practicing experiences, completed actions and
-                    common Present Perfect structures.
-                  </p>
+                      <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                        Grammar focus: {dashboard.continueLesson.grammarPoint}
+                      </p>
 
-                  <div className="mt-4 max-w-2xl space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">
-                        Lesson progress
-                      </span>
+                      <p className="mt-4 text-xs text-muted-foreground">
+                        Lesson progress tracking will be added when exercise
+                        completion is stored.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <h2 className="mt-3 text-xl font-semibold">
+                        Course complete
+                      </h2>
 
-                      <span className="font-medium">72%</span>
-                    </div>
-
-                    <Progress value={72} />
-                  </div>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        You have completed every published lesson in this course.
+                      </p>
+                    </>
+                  )}
                 </div>
 
-                <Button className="gap-2 lg:self-end">
+                <Button className="gap-2 lg:self-end" disabled={!dashboard?.continueLesson}>
                   Continue
                   <ArrowRight className="h-4 w-4" />
                 </Button>
@@ -189,7 +229,11 @@ export default function StudentDashboard() {
             <CardHeader className="px-5 pb-3 pt-5">
               <CardDescription>Your current course</CardDescription>
 
-              <CardTitle className="text-xl">English A2 → B1</CardTitle>
+              <CardTitle className="text-xl">
+                {loadingDashboard
+                  ? "Loading course..."
+                  : dashboard?.courseTitle || "English A2"}
+              </CardTitle>
             </CardHeader>
 
             <CardContent className="px-5 pb-5">
@@ -197,19 +241,29 @@ export default function StudentDashboard() {
                 <div>
                   <div className="mb-1.5 flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">
-                      12 of 30 lessons completed
+                      {loadingDashboard
+                        ? "Loading progress..."
+                        : `${dashboard?.courseLessonsCompleted ?? 0} of ${
+                            dashboard?.totalCourseLessons ?? 0
+                          } lessons completed`}
                     </span>
 
-                    <span className="font-medium">40%</span>
+                    <span className="font-medium">
+                      {loadingDashboard
+                        ? "..."
+                        : `${dashboard?.courseProgress ?? 0}%`}
+                    </span>
                   </div>
 
-                  <Progress value={40} />
+                  <Progress value={dashboard?.courseProgress ?? 0} />
                 </div>
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm font-medium">
-                      18 lessons remaining
+                      {loadingDashboard
+                        ? "Loading..."
+                        : `${dashboard?.lessonsRemaining ?? 0} lessons remaining`}
                     </p>
 
                     <p className="text-xs text-muted-foreground">
@@ -230,11 +284,18 @@ export default function StudentDashboard() {
             <CardHeader className="px-5 pb-3 pt-5">
               <CardDescription>Weekly goal</CardDescription>
 
-              <CardTitle className="text-xl">3 / 5 days</CardTitle>
+              <CardTitle className="text-xl">
+                {loadingDashboard
+                  ? "..."
+                  : `${
+                      dashboard?.weeklyGoal.filter((day) => day.completed)
+                        .length ?? 0
+                    } / ${dashboard?.weeklyGoal.length ?? 5} days`}
+              </CardTitle>
             </CardHeader>
 
             <CardContent className="space-y-2 px-5 pb-5">
-              {weekDays.map((item) => (
+              {(dashboard?.weeklyGoal ?? []).map((item) => (
                 <div
                   key={item.day}
                   className="flex items-center justify-between rounded-lg border px-3 py-2"
@@ -265,9 +326,9 @@ export default function StudentDashboard() {
             </CardHeader>
 
             <CardContent className="space-y-2 px-5 pb-5">
-              {recentActivity.map((activity) => (
+              {(dashboard?.recentActivity ?? []).map((activity) => (
                 <div
-                  key={activity.lesson}
+                  key={activity.lessonId}
                   className="flex items-center justify-between rounded-lg border px-4 py-3"
                 >
                   <div className="flex items-center gap-3">
@@ -277,7 +338,7 @@ export default function StudentDashboard() {
 
                     <div>
                       <p className="text-sm font-medium">
-                        {activity.lesson}
+                        {activity.lessonTitle}
                       </p>
 
                       <p className="text-xs text-muted-foreground">
@@ -287,7 +348,7 @@ export default function StudentDashboard() {
                   </div>
 
                   <span className="text-xs text-muted-foreground">
-                    {activity.date}
+                    {formatActivityDate(activity.completedAt)}
                   </span>
                 </div>
               ))}
@@ -299,7 +360,11 @@ export default function StudentDashboard() {
             <CardHeader className="px-5 pb-2 pt-5">
               <CardDescription>Latest achievement</CardDescription>
 
-              <CardTitle className="text-xl">7 day streak</CardTitle>
+              <CardTitle className="text-xl">
+                {loadingDashboard
+                  ? "..."
+                  : dashboard?.latestAchievement?.title ?? "Keep going"}
+              </CardTitle>
             </CardHeader>
 
             <CardContent className="px-5 pb-5">
@@ -310,11 +375,14 @@ export default function StudentDashboard() {
 
                 <div>
                   <p className="text-sm font-medium">
-                    Consistency champion
+                    {dashboard?.latestAchievement
+                      ? "Consistency champion"
+                      : "Your next achievement is waiting"}
                   </p>
 
                   <p className="mt-1 text-xs text-muted-foreground">
-                    You studied English for seven days in a row.
+                    {dashboard?.latestAchievement?.description ??
+                      "Study on consecutive days to unlock a streak achievement."}
                   </p>
                 </div>
               </div>

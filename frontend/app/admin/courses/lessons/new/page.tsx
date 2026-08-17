@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -10,11 +10,11 @@ import {
   Languages,
   Mic,
   PenLine,
-  Plus,
   Save,
   Trash2,
   Upload,
 } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 type VocabularyItem = {
   id: number;
@@ -32,12 +32,15 @@ type ReadingItem = {
 };
 
 export default function NewLessonPage() {
-  const params = useParams();
-  const courseId = params.courseId as string;
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const courseId = searchParams.get("courseId") ?? "";
 
   const [title, setTitle] = useState("");
   const [grammarPoint, setGrammarPoint] = useState("");
   const [grammarExplanation, setGrammarExplanation] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   const [vocabulary, setVocabulary] = useState<VocabularyItem[]>([
     createVocabularyItem(1),
@@ -90,37 +93,58 @@ export default function NewLessonPage() {
     );
   };
 
-  const handleSave = () => {
-    const lesson = {
-      courseId,
-      title,
-      grammarPoint,
-      grammarExplanation,
-      vocabulary,
-      writingPrompt,
-      speakingPrompt,
-      readings,
-    };
+  const handleSave = async () => {
+    if (!courseId) {
+      setError("Course ID is missing.");
+      return;
+    }
 
-    console.log("Lesson:", lesson);
+    if (!title.trim()) {
+      setError("Lesson title is required.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError("");
+
+      await apiFetch("/api/admin/lessons", {
+        method: "POST",
+        body: JSON.stringify({
+          courseId,
+          title: title.trim(),
+          grammarPoint: grammarPoint.trim(),
+          grammarExplanation: grammarExplanation.trim(),
+          order: 1,
+          isPublished: false,
+        }),
+      });
+
+      router.push(`/admin/courses/${courseId}`);
+      router.refresh();
+    } catch (err) {
+      console.error(err);
+      setError("Could not create lesson.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <main className="min-h-screen bg-[#faf9f7] px-6 py-8 md:px-10 lg:px-14">
       <div className="mx-auto max-w-5xl">
         <Link
-          href={`/admin/courses/${courseId}/lessons`}
+          href={courseId ? `/admin/courses/${courseId}` : "/admin/courses"}
           className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-slate-900"
         >
           <ArrowLeft size={17} />
-          Back to lessons
+          Back to course
         </Link>
 
-        {/* Header */}
         <section className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="mb-2 text-sm font-semibold text-purple-600">
-              Course {courseId}
+              Course {courseId || "unknown"}
             </p>
 
             <h1 className="text-3xl font-bold text-slate-900 md:text-4xl">
@@ -134,15 +158,21 @@ export default function NewLessonPage() {
 
           <button
             onClick={handleSave}
-            className="flex w-fit items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+            disabled={saving}
+            className="flex w-fit items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Save size={17} />
-            Save lesson
+            {saving ? "Saving..." : "Save lesson"}
           </button>
         </section>
 
+        {error && (
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+            {error}
+          </div>
+        )}
+
         <div className="space-y-6">
-          {/* Basic info */}
           <Section
             title="Lesson information"
             description="Basic information about this lesson."
@@ -173,7 +203,6 @@ export default function NewLessonPage() {
             </div>
           </Section>
 
-          {/* Vocabulary */}
           <Section
             title="Vocabulary"
             description="Add the five vocabulary words for this lesson. Each word can have its own pronunciation audio."
@@ -238,7 +267,6 @@ export default function NewLessonPage() {
             </div>
           </Section>
 
-          {/* Writing */}
           <Section
             title="Writing exercise"
             description="Give the student a short task to practice written English."
@@ -253,7 +281,6 @@ export default function NewLessonPage() {
             />
           </Section>
 
-          {/* Speaking */}
           <Section
             title="Speaking exercise"
             description="Give the student a prompt they can answer aloud."
@@ -268,7 +295,6 @@ export default function NewLessonPage() {
             />
           </Section>
 
-          {/* Readings */}
           <Section
             title="Mini readings"
             description="Every lesson includes three short texts with audio."
@@ -317,14 +343,14 @@ export default function NewLessonPage() {
             </div>
           </Section>
 
-          {/* Bottom save */}
           <section className="flex justify-end pb-12">
             <button
               onClick={handleSave}
-              className="flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+              disabled={saving}
+              className="flex items-center gap-2 rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Save size={17} />
-              Save lesson
+              {saving ? "Saving..." : "Save lesson"}
             </button>
           </section>
         </div>
@@ -371,10 +397,7 @@ function Section({
         </div>
 
         <div>
-          <h2 className="text-lg font-bold text-slate-900">
-            {title}
-          </h2>
-
+          <h2 className="text-lg font-bold text-slate-900">{title}</h2>
           <p className="mt-1 text-sm leading-5 text-slate-400">
             {description}
           </p>
@@ -455,9 +478,7 @@ function AudioUploader({
 }) {
   return (
     <div>
-      <p className="mb-2 text-sm font-semibold text-slate-700">
-        {label}
-      </p>
+      <p className="mb-2 text-sm font-semibold text-slate-700">{label}</p>
 
       <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-dashed border-slate-300 bg-white p-4 transition hover:border-purple-300 hover:bg-purple-50/30">
         <div className="flex min-w-0 items-center gap-3">
@@ -470,9 +491,7 @@ function AudioUploader({
               {file ? file.name : "Upload audio"}
             </p>
 
-            <p className="mt-0.5 text-xs text-slate-400">
-              MP3, WAV or M4A
-            </p>
+            <p className="mt-0.5 text-xs text-slate-400">MP3, WAV or M4A</p>
           </div>
         </div>
 
