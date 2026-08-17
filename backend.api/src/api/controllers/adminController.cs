@@ -39,6 +39,56 @@ namespace backend.api.src.api.controllers
             return Ok(courses);
         }
 
+        // POST: /api/admin/courses
+        [HttpPost("courses")]
+        public async Task<IActionResult> CreateCourse(
+            [FromBody] CreateCourseDTO dto
+        )
+        {
+            if (string.IsNullOrWhiteSpace(dto.Title) ||
+                string.IsNullOrWhiteSpace(dto.Description))
+            {
+                return BadRequest(new
+                {
+                    message = "Title and description are required."
+                });
+            }
+
+            var a2CourseExists = await _context.Courses
+                .AnyAsync(course => course.Level == "A2");
+
+            if (a2CourseExists)
+            {
+                return Conflict(new
+                {
+                    message = "The A2 course already exists."
+                });
+            }
+
+            var course = new Course
+            {
+                Id = Guid.NewGuid(),
+                Title = dto.Title.Trim(),
+                Description = dto.Description.Trim(),
+                Level = "A2",
+                IsPublished = dto.IsPublished
+            };
+
+            _context.Courses.Add(course);
+            await _context.SaveChangesAsync();
+
+            return StatusCode(201, new
+            {
+                course.Id,
+                course.Title,
+                course.Description,
+                course.Level,
+                course.IsPublished,
+                LessonCount = 0
+            });
+        }
+
+
         // GET: /api/admin/courses/{courseId}
         [HttpGet("courses/{courseId:guid}")]
         public async Task<IActionResult> GetCourse(Guid courseId)

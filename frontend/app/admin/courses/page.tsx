@@ -14,6 +14,7 @@ import {
   Eye,
   Copy,
   Archive,
+  X,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 
@@ -44,6 +45,16 @@ export default function AdminCoursesPage() {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
+  const [newCourse, setNewCourse] = useState({
+    title: "Everyday English",
+    description:
+      "Learn to communicate about daily life, experiences, plans and the world around you.",
+    isPublished: false,
+  });
 
   useEffect(() => {
     async function loadCourses() {
@@ -81,6 +92,35 @@ export default function AdminCoursesPage() {
     );
   });
 
+  const handleCreateCourse = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setCreating(true);
+    setCreateError("");
+
+    try {
+      const course = await apiFetch<ApiCourse>("/api/admin/courses", {
+        method: "POST",
+        body: JSON.stringify(newCourse),
+      });
+
+      setCourses([{
+        id: course.id,
+        level: course.level,
+        title: course.title,
+        description: course.description,
+        lessons: course.lessonCount,
+        students: 0,
+        status: course.isPublished ? "Published" : "In progress",
+      }]);
+      setShowCreateForm(false);
+    } catch (err) {
+      console.error(err);
+      setCreateError("No pudimos crear el curso A2. Inténtalo de nuevo.");
+    } finally {
+      setCreating(false);
+    }
+  };
+  
   const handleDelete = (id: string) => {
     const confirmed = window.confirm(
       "Are you sure you want to delete this course?"
@@ -135,10 +175,23 @@ export default function AdminCoursesPage() {
             </p>
           </div>
 
-          <button className="flex w-fit items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800">
-            <Plus size={18} />
-            Add course
-          </button>
+          {courses.length === 0 ? (
+            <button
+              onClick={() => setShowCreateForm(true)}
+              className="flex w-fit items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800"
+            >
+              <Plus size={18} />
+              Crear curso A2
+            </button>
+          ) : (
+            <Link
+              href={`/admin/courses/${courses[0].id}`}
+              className="flex w-fit items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800"
+            >
+              <BookOpen size={18} />
+              Entrar al curso A2
+            </Link>
+          )}
         </section>
 
         <section className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -234,6 +287,80 @@ export default function AdminCoursesPage() {
           )}
         </section>
       </div>
+       {showCreateForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-5">
+          <form
+            onSubmit={handleCreateCourse}
+            className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl md:p-8"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <span className="inline-flex rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-700">
+                  Nivel A2
+                </span>
+                <h2 className="mt-3 text-2xl font-bold text-slate-900">Crear el curso A2</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Por ahora Bright Bytes tendrá únicamente este curso. Después podrás entrar y agregar sus lecciones.
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Cerrar"
+                onClick={() => setShowCreateForm(false)}
+                className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <label className="mt-6 block text-sm font-semibold text-slate-700">
+              Nombre del curso
+              <input
+                required
+                maxLength={120}
+                value={newCourse.title}
+                onChange={(event) => setNewCourse((course) => ({ ...course, title: event.target.value }))}
+                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-purple-300 focus:ring-4 focus:ring-purple-100"
+              />
+            </label>
+
+            <label className="mt-5 block text-sm font-semibold text-slate-700">
+              Descripción
+              <textarea
+                required
+                maxLength={500}
+                rows={4}
+                value={newCourse.description}
+                onChange={(event) => setNewCourse((course) => ({ ...course, description: event.target.value }))}
+                className="mt-2 w-full resize-none rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-purple-300 focus:ring-4 focus:ring-purple-100"
+              />
+            </label>
+
+            <label className="mt-5 flex items-center gap-3 text-sm font-medium text-slate-600">
+              <input
+                type="checkbox"
+                checked={newCourse.isPublished}
+                onChange={(event) => setNewCourse((course) => ({ ...course, isPublished: event.target.checked }))}
+                className="h-4 w-4 accent-purple-600"
+              />
+              Publicar el curso al crearlo
+            </label>
+
+            {createError && (
+              <p className="mt-5 rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600">{createError}</p>
+            )}
+
+            <div className="mt-7 flex justify-end gap-3">
+              <button type="button" onClick={() => setShowCreateForm(false)} className="rounded-2xl px-5 py-3 text-sm font-semibold text-slate-500 hover:bg-slate-100">
+                Cancelar
+              </button>
+              <button disabled={creating} className="rounded-2xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-700 disabled:opacity-60">
+                {creating ? "Creando..." : "Crear curso A2"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </main>
   );
 }
