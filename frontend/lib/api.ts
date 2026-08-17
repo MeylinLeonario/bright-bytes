@@ -47,6 +47,32 @@ export interface StudentDashboardData {
   latestAchievement: Achievement | null;
 }
 
+export interface StudentCourse {
+  id: string;
+  title: string;
+  description: string;
+  level: string;
+  lessons: Array<{ id: string; title: string; grammarPoint: string; order: number; completed: boolean }>;
+}
+
+export interface StudentLesson {
+  id: string;
+  title: string;
+  grammarPoint: string;
+  grammarExplanation: string;
+  writingPrompt: string;
+  speakingPrompt: string;
+  order: number;
+  courseId: string;
+  courseTitle: string;
+  completed: boolean;
+  previousLessonId: string | null;
+  nextLessonId: string | null;
+  vocabulary: Array<{ id: string; word: string; meaning: string; example: string; audioUrl: string | null }>;
+  readings: Array<{ id: string; title: string; text: string; audioUrl: string | null }>;
+}
+
+
 export async function apiFetch<T>(
   endpoint: string,
   options: RequestInit = {}
@@ -85,4 +111,18 @@ export function getCurrentUser() {
 
 export function getStudentDashboard() {
   return apiFetch<StudentDashboardData>("/api/student/dashboard");
+}
+
+export function getStudentCourses() {
+  return apiFetch<StudentCourse[]>("/api/student/courses");
+}
+
+export function getStudentLesson(lessonId: string) {
+  return apiFetch<StudentLesson>(`/api/student/lessons/${lessonId}`);
+}
+
+export function completeStudentLesson(lessonId: string) {
+  return apiFetch<{ completed: boolean; completedAt: string }>(
+    `/api/student/lessons/${lessonId}/complete`, { method: "POST" }
+  );
 }

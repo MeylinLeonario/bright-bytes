@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -21,6 +20,8 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { useEffect, useState } from "react";
 import { getCurrentUser, getStudentDashboard } from "@/lib/api";
+import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
 import type { CurrentUser, StudentDashboardData } from "@/lib/api";
 
 
@@ -194,11 +195,6 @@ export default function StudentDashboard() {
                       <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
                         Grammar focus: {dashboard.continueLesson.grammarPoint}
                       </p>
-
-                      <p className="mt-4 text-xs text-muted-foreground">
-                        Lesson progress tracking will be added when exercise
-                        completion is stored.
-                      </p>
                     </>
                   ) : (
                     <>
@@ -212,11 +208,9 @@ export default function StudentDashboard() {
                     </>
                   )}
                 </div>
-
-                <Button className="gap-2 lg:self-end" disabled={!dashboard?.continueLesson}>
-                  Continue
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
+                {dashboard?.continueLesson && <Link className={buttonVariants({ className: "gap-2 lg:self-end" })} href={`/student/lessons/${dashboard.continueLesson.id}`}>
+                  Continue <ArrowRight className="h-4 w-4" />
+                </Link>}
               </div>
             </CardContent>
           </Card>
@@ -270,10 +264,7 @@ export default function StudentDashboard() {
                       Keep going — you are making progress.
                     </p>
                   </div>
-
-                  <Button variant="outline" size="sm">
-                    View course
-                  </Button>
+                  <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/student/courses">View course</Link>
                 </div>
               </div>
             </CardContent>

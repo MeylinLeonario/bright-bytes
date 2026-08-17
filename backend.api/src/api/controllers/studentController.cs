@@ -20,6 +20,120 @@ public class StudentController : ControllerBase
         _context = context;
     }
 
+    [HttpGet("courses")]
+    public async Task<IActionResult> GetCourses()
+    {
+        if (!TryGetUserId(out var userId)) return Unauthorized();
+
+        var completedLessonIds = await _context.UserProgress
+            .Where(progress => progress.UserId == userId && progress.Completed)
+            .Select(progress => progress.LessonId)
+            .ToListAsync();
+
+        var courses = await _context.Courses
+            .AsNoTracking()
+            .Where(course => course.IsPublished)
+            .OrderBy(course => course.Level)
+            .Select(course => new
+            {
+                course.Id,
+                course.Title,
+                course.Description,
+                course.Level,
+                Lessons = course.Lessons
+                    .Where(lesson => lesson.IsPublished)
+                    .OrderBy(lesson => lesson.Order)
+                    .Select(lesson => new
+                    {
+                        lesson.Id,
+                        lesson.Title,
+                        lesson.GrammarPoint,
+                        lesson.Order,
+                        Completed = completedLessonIds.Contains(lesson.Id)
+                    }).ToList()
+            })
+            .ToListAsync();
+
+        return Ok(courses);
+    }
+
+    [HttpGet("lessons/{lessonId:guid}")]
+    public async Task<IActionResult> GetLesson(Guid lessonId)
+    {
+        if (!TryGetUserId(out var userId)) return Unauthorized();
+
+        var lesson = await _context.Lessons
+            .AsNoTracking()
+            .Where(item => item.Id == lessonId && item.IsPublished && item.Course.IsPublished)
+            .Select(item => new
+            {
+                item.Id,
+                item.Title,
+                item.GrammarPoint,
+                item.GrammarExplanation,
+                item.WritingPrompt,
+                item.SpeakingPrompt,
+                item.Order,
+                CourseId = item.Course.Id,
+                CourseTitle = item.Course.Title,
+                Vocabulary = item.Vocabulary.Select(word => new
+                {
+                    word.Id, word.Word, word.Meaning, word.Example, word.AudioUrl
+                }).ToList(),
+                Readings = item.Readings.Select(reading => new
+                {
+                    reading.Id, reading.Title, reading.Text, reading.AudioUrl
+                }).ToList()
+            })
+            .FirstOrDefaultAsync();
+
+        if (lesson is null) return NotFound(new { message = "Lesson not found." });
+
+        var lessonIds = await _context.Lessons
+            .Where(item => item.CourseId == lesson.CourseId && item.IsPublished)
+            .OrderBy(item => item.Order)
+            .Select(item => item.Id)
+            .ToListAsync();
+        var index = lessonIds.IndexOf(lessonId);
+        var completed = await _context.UserProgress.AnyAsync(progress =>
+            progress.UserId == userId && progress.LessonId == lessonId && progress.Completed);
+
+        return Ok(new
+        {
+            lesson.Id, lesson.Title, lesson.GrammarPoint, lesson.GrammarExplanation,
+            lesson.WritingPrompt, lesson.SpeakingPrompt, lesson.Order,
+            lesson.CourseId, lesson.CourseTitle, lesson.Vocabulary, lesson.Readings,
+            Completed = completed,
+            PreviousLessonId = index > 0 ? lessonIds[index - 1] : (Guid?)null,
+            NextLessonId = index >= 0 && index < lessonIds.Count - 1 ? lessonIds[index + 1] : (Guid?)null
+        });
+    }
+
+    [HttpPost("lessons/{lessonId:guid}/complete")]
+    public async Task<IActionResult> CompleteLesson(Guid lessonId)
+    {
+        if (!TryGetUserId(out var userId)) return Unauthorized();
+        var exists = await _context.Lessons.AnyAsync(lesson =>
+            lesson.Id == lessonId && lesson.IsPublished && lesson.Course.IsPublished);
+        if (!exists) return NotFound(new { message = "Lesson not found." });
+
+        var progress = await _context.UserProgress.FirstOrDefaultAsync(item =>
+            item.UserId == userId && item.LessonId == lessonId);
+        if (progress is null)
+        {
+            progress = new backend.api.src.models.UserProgress
+            {
+                Id = Guid.NewGuid(), UserId = userId, LessonId = lessonId
+            };
+            _context.UserProgress.Add(progress);
+        }
+        progress.Completed = true;
+        progress.CompletedAt ??= DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return Ok(new { progress.Completed, progress.CompletedAt });
+    }
+    
    [HttpGet("dashboard")]
     public async Task<IActionResult> GetDashboard()
     {
@@ -328,5 +442,10 @@ public class StudentController : ControllerBase
         }
 
         return streak;
+    }
+
+      private bool TryGetUserId(out Guid userId)
+    {
+        return Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
     }
 }
