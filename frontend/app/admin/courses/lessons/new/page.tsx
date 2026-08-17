@@ -108,6 +108,22 @@ export default function NewLessonPage() {
       setSaving(true);
       setError("");
 
+      const vocabularyPayload = await Promise.all(
+        vocabulary.map(async ({ word, meaning, example, audio }) => ({
+          word: word.trim(),
+          meaning: meaning.trim(),
+          example: example.trim(),
+          audioUrl: audio ? await fileToDataUrl(audio) : null,
+        }))
+      );
+      const readingsPayload = await Promise.all(
+        readings.map(async ({ title: readingTitle, text, audio }) => ({
+          title: readingTitle.trim(),
+          text: text.trim(),
+          audioUrl: audio ? await fileToDataUrl(audio) : null,
+        }))
+      );
+
       await apiFetch("/api/admin/lessons", {
         method: "POST",
         body: JSON.stringify({
@@ -115,6 +131,10 @@ export default function NewLessonPage() {
           title: title.trim(),
           grammarPoint: grammarPoint.trim(),
           grammarExplanation: grammarExplanation.trim(),
+          writingPrompt: writingPrompt.trim(),
+          speakingPrompt: speakingPrompt.trim(),
+          vocabulary: vocabularyPayload,
+          readings: readingsPayload,
           order: 1,
           isPublished: false,
         }),
@@ -130,6 +150,7 @@ export default function NewLessonPage() {
     }
   };
 
+  
   return (
     <main className="min-h-screen bg-[#faf9f7] px-6 py-8 md:px-10 lg:px-14">
       <div className="mx-auto max-w-5xl">
@@ -368,6 +389,16 @@ function createVocabularyItem(id: number): VocabularyItem {
     audio: null,
   };
 }
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
 
 function createReadingItem(id: number): ReadingItem {
   return {

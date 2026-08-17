@@ -53,6 +53,11 @@ public class JwtService
                 "name",
                 user.Name
             ),
+            
+            new Claim(
+                ClaimTypes.Role,
+                user.Role
+            ),
 
             new Claim(
                 JwtRegisteredClaimNames.Jti,

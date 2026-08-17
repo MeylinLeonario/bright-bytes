@@ -3,11 +3,13 @@ using backend.api.src.models;
 using BrightBytes.Api.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace backend.api.src.api.controllers
 {
     [ApiController]
     [Route("api/admin")]
+    [Authorize(Roles = "admin")]
     public class AdminController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -58,8 +60,25 @@ namespace backend.api.src.api.controllers
                             lesson.Title,
                             lesson.GrammarPoint,
                             lesson.GrammarExplanation,
+                            lesson.WritingPrompt,
+                            lesson.SpeakingPrompt,
                             lesson.Order,
-                            lesson.IsPublished
+                            lesson.IsPublished,
+                            Vocabulary = lesson.Vocabulary.Select(item => new
+                            {
+                                item.Id,
+                                item.Word,
+                                item.Meaning,
+                                item.Example,
+                                item.AudioUrl
+                            }).ToList(),
+                            Readings = lesson.Readings.Select(item => new
+                            {
+                                item.Id,
+                                item.Title,
+                                item.Text,
+                                item.AudioUrl
+                            }).ToList()
                         })
                         .ToList()
                 })
@@ -101,6 +120,8 @@ namespace backend.api.src.api.controllers
                     lesson.Title,
                     lesson.GrammarPoint,
                     lesson.GrammarExplanation,
+                    lesson.WritingPrompt,
+                    lesson.SpeakingPrompt,
                     lesson.Order,
                     lesson.IsPublished
                 })
@@ -126,6 +147,11 @@ namespace backend.api.src.api.controllers
                 });
             }
 
+            var nextOrder = await _context.Lessons
+                .Where(lesson => lesson.CourseId == dto.CourseId)
+                .Select(lesson => (int?)lesson.Order)
+                .MaxAsync() ?? 0;
+
             var lesson = new Lesson
             {
                 Id = Guid.NewGuid(),
@@ -133,8 +159,25 @@ namespace backend.api.src.api.controllers
                 Title = dto.Title.Trim(),
                 GrammarPoint = dto.GrammarPoint.Trim(),
                 GrammarExplanation = dto.GrammarExplanation.Trim(),
-                Order = dto.Order,
-                IsPublished = dto.IsPublished
+                WritingPrompt = dto.WritingPrompt.Trim(),
+                SpeakingPrompt = dto.SpeakingPrompt.Trim(),
+                Order = nextOrder + 1,
+                IsPublished = dto.IsPublished,
+                Vocabulary = dto.Vocabulary.Select(item => new VocabularyItem
+                {
+                    Id = Guid.NewGuid(),
+                    Word = item.Word.Trim(),
+                    Meaning = item.Meaning.Trim(),
+                    Example = item.Example.Trim(),
+                    AudioUrl = item.AudioUrl
+                }).ToList(),
+                Readings = dto.Readings.Select(item => new Reading
+                {
+                    Id = Guid.NewGuid(),
+                    Title = item.Title.Trim(),
+                    Text = item.Text.Trim(),
+                    AudioUrl = item.AudioUrl
+                }).ToList()
             };
 
             _context.Lessons.Add(lesson);
@@ -148,8 +191,25 @@ namespace backend.api.src.api.controllers
                 lesson.Title,
                 lesson.GrammarPoint,
                 lesson.GrammarExplanation,
+                lesson.WritingPrompt,
+                lesson.SpeakingPrompt,
                 lesson.Order,
-                lesson.IsPublished
+                lesson.IsPublished,
+                Vocabulary = lesson.Vocabulary.Select(item => new
+                {
+                    item.Id,
+                    item.Word,
+                    item.Meaning,
+                    item.Example,
+                    item.AudioUrl
+                }),
+                Readings = lesson.Readings.Select(item => new
+                {
+                    item.Id,
+                    item.Title,
+                    item.Text,
+                    item.AudioUrl
+                })
             });
         }
 

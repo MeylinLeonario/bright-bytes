@@ -94,7 +94,10 @@ export default function LoginPage() {
       setSuccess("¡Sesión iniciada! Cargando Bright Bytes...");
 
       setTimeout(() => {
-        window.location.href = "/student/dashboard";
+        window.location.href =
+          data?.user?.role === "admin"
+            ? "/admin/courses"
+            : "/student/dashboard";
       }, 1000);
     } catch (err) {
       console.error("Login error:", err);

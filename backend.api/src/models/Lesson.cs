@@ -19,6 +19,10 @@ namespace backend.api.src.models
 
     public string GrammarExplanation { get; set; } = string.Empty;
 
+    public string WritingPrompt { get; set; } = string.Empty;
+
+    public string SpeakingPrompt { get; set; } = string.Empty;
+
     public int Order { get; set; }
 
     public bool IsPublished { get; set; }

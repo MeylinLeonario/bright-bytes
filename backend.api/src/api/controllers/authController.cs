@@ -117,7 +117,8 @@ public class AuthController : ControllerBase
             {
                 user.Id,
                 user.Name,
-                user.Email
+                user.Email,
+                user.Role
             }
         });
 
@@ -152,7 +153,8 @@ public class AuthController : ControllerBase
         {
             id = user.Id,
             name = user.Name,
-            email = user.Email
+            email = user.Email,
+            role = user.Role
         });
     }
 }
