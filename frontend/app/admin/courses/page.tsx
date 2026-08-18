@@ -45,7 +45,7 @@ export default function AdminCoursesPage() {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
+  const [updatingCourseId, setUpdatingCourseId] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
@@ -133,6 +133,30 @@ export default function AdminCoursesPage() {
     );
 
     setOpenMenu(null);
+  };
+  const handlePublicationChange = async (course: Course) => {
+    const isPublished = course.status !== "Published";
+    setUpdatingCourseId(course.id);
+
+    try {
+      await apiFetch(`/api/admin/courses/${course.id}/publication`, {
+        method: "PATCH",
+        body: JSON.stringify({ isPublished }),
+      });
+      setCourses((currentCourses) =>
+        currentCourses.map((currentCourse) =>
+          currentCourse.id === course.id
+            ? { ...currentCourse, status: isPublished ? "Published" : "In progress" }
+            : currentCourse
+        )
+      );
+      setOpenMenu(null);
+    } catch (err) {
+      console.error(err);
+      window.alert("No pudimos actualizar la publicación del curso. Inténtalo de nuevo.");
+    } finally {
+      setUpdatingCourseId(null);
+    }
   };
 
   if (loading) {
@@ -248,7 +272,7 @@ export default function AdminCoursesPage() {
           </p>
         </section>
 
-        <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <section className="rounded-3xl border border-slate-200 bg-white shadow-sm">
           <div className="hidden grid-cols-[1.5fr_100px_120px_130px_130px_70px] gap-4 border-b border-slate-100 bg-slate-50/70 px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400 lg:grid">
             <span>Course</span>
             <span>Level</span>
@@ -266,6 +290,8 @@ export default function AdminCoursesPage() {
                 openMenu={openMenu}
                 setOpenMenu={setOpenMenu}
                 onDelete={handleDelete}
+                onPublicationChange={handlePublicationChange}
+                isUpdating={updatingCourseId === course.id}
               />
             ))}
           </div>
@@ -370,11 +396,15 @@ function CourseRow({
   openMenu,
   setOpenMenu,
   onDelete,
+  onPublicationChange,
+  isUpdating,
 }: {
   course: Course;
   openMenu: string | null;
   setOpenMenu: (id: string | null) => void;
   onDelete: (id: string) => void;
+  onPublicationChange: (course: Course) => void;
+  isUpdating: boolean;
 }) {
   return (
     <article className="relative border-b border-slate-100 p-5 transition last:border-b-0 hover:bg-slate-50/70 lg:grid lg:grid-cols-[1.5fr_100px_120px_130px_130px_70px] lg:items-center lg:gap-4 lg:px-6">
@@ -447,7 +477,19 @@ function CourseRow({
 
             <ActionButton icon={<Copy size={16} />}>Duplicate</ActionButton>
 
-            <ActionButton icon={<Archive size={16} />}>Unpublish</ActionButton>
+            <button
+              type="button"
+              disabled={isUpdating}
+              onClick={() => onPublicationChange(course)}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 disabled:cursor-wait disabled:opacity-60"
+            >
+              {course.status === "Published" ? <Archive size={16} /> : <Eye size={16} />}
+              {isUpdating
+                ? "Actualizando..."
+                : course.status === "Published"
+                  ? "Despublicar curso"
+                  : "Publicar curso"}
+            </button>
 
             <div className="my-1 border-t border-slate-100" />
 

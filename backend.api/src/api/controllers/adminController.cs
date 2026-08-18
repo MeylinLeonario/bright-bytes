@@ -145,6 +145,34 @@ namespace backend.api.src.api.controllers
             return Ok(course);
         }
 
+        // PATCH: /api/admin/courses/{courseId}/publication
+        [HttpPatch("courses/{courseId:guid}/publication")]
+        public async Task<IActionResult> UpdateCoursePublication(
+            Guid courseId,
+            [FromBody] UpdateCoursePublicationDTO dto
+        )
+        {
+            var course = await _context.Courses
+                .FirstOrDefaultAsync(course => course.Id == courseId);
+
+            if (course is null)
+            {
+                return NotFound(new
+                {
+                    message = "Course not found."
+                });
+            }
+
+            course.IsPublished = dto.IsPublished;
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                course.Id,
+                course.IsPublished
+            });
+        }
+        
         // GET: /api/admin/courses/{courseId}/lessons
         [HttpGet("courses/{courseId:guid}/lessons")]
         public async Task<IActionResult> GetLessons(Guid courseId)

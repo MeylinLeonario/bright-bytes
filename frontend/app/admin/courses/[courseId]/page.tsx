@@ -14,6 +14,7 @@ import {
   MoreVertical,
   FileText,
   CheckCircle2,
+  Upload,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 
@@ -42,6 +43,8 @@ export default function CoursePage() {
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [publishing, setPublishing] = useState(false);
+  const [publicationError, setPublicationError] = useState("");
 
   useEffect(() => {
     async function loadCourse() {
@@ -94,6 +97,26 @@ export default function CoursePage() {
       ? 0
       : Math.round((publishedLessons / totalLessons) * 100);
 
+  const handlePublicationChange = async () => {
+    setPublishing(true);
+    setPublicationError("");
+
+    try {
+      const isPublished = !course.isPublished;
+      await apiFetch(`/api/admin/courses/${course.id}/publication`, {
+        method: "PATCH",
+        body: JSON.stringify({ isPublished }),
+      });
+      setCourse({ ...course, isPublished });
+    } catch (err) {
+      console.error(err);
+      setPublicationError("No pudimos actualizar la publicación del curso. Inténtalo de nuevo.");
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+
   return (
     <main className="min-h-screen bg-[#faf9f7] px-6 py-8 md:px-10 lg:px-14">
       <div className="mx-auto max-w-7xl">
@@ -134,6 +157,23 @@ export default function CoursePage() {
             </div>
 
             <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                disabled={publishing}
+                onClick={handlePublicationChange}
+                className={`flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold text-white transition disabled:cursor-wait disabled:opacity-60 ${
+                  course.isPublished
+                    ? "bg-slate-600 hover:bg-slate-700"
+                    : "bg-purple-600 hover:bg-purple-700"
+                }`}
+              >
+                <Upload size={17} />
+                {publishing
+                  ? "Actualizando..."
+                  : course.isPublished
+                    ? "Despublicar curso"
+                    : "Publicar curso"}
+              </button>
               <button className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50">
                 <Eye size={17} />
                 Preview
@@ -149,6 +189,11 @@ export default function CoursePage() {
               </button>
             </div>
           </div>
+          {publicationError && (
+            <p className="mt-5 rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+              {publicationError}
+            </p>
+          )}
         </section>
 
         <section className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
