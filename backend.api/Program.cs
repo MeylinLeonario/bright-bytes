@@ -6,10 +6,10 @@ using Microsoft.IdentityModel.Tokens;
 
 using backend.api.src.application.services;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+
 builder.Services.AddScoped<JwtService>();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -51,43 +51,42 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
-var frontendUrls = new[]
-{
-    "http://localhost:3000",
-    "https://bright-bytes-alpha.vercel.app"
-}
-    .Concat((builder.Configuration["FRONTEND_URL"] ?? string.Empty)
-        .Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-    .Distinct(StringComparer.OrdinalIgnoreCase)
-    .ToArray();
-
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
     {
         policy
-            .WithOrigins(frontendUrls)
+            .WithOrigins(
+                "http://localhost:3000",
+                "https://bright-bytes-alpha.vercel.app"
+            )
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
 });
 
-
-
 var app = builder.Build();
-
 
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
     await context.Database.MigrateAsync();
-    await AdminSeeder.SeedAsync(context, builder.Configuration);
+
+    await AdminSeeder.SeedAsync(
+        context,
+        builder.Configuration
+    );
 }
 
+app.UseRouting();
 
 app.UseCors("Frontend");
+
 app.UseAuthentication();
+
 app.UseAuthorization();
+
 app.MapControllers();
 
 app.Run();
