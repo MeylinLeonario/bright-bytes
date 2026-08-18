@@ -3,13 +3,11 @@ using Microsoft.EntityFrameworkCore;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-
 using backend.api.src.application.services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
-
 builder.Services.AddScoped<JwtService>();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -53,7 +51,7 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("Frontend", policy =>
+    options.AddDefaultPolicy(policy =>
     {
         policy
             .WithOrigins(
@@ -81,19 +79,20 @@ using (var scope = app.Services.CreateScope())
 
 app.UseRouting();
 
-app.UseCors("Frontend");
+app.UseCors();
 
 app.UseAuthentication();
-
 app.UseAuthorization();
 
 app.MapControllers();
+
 app.MapGet("/api/debug/cors", () =>
 {
     return Results.Ok(new
     {
         message = "Bright Bytes backend is running",
-        version = "cors-fix-1"
+        version = "cors-fix-2"
     });
 });
+
 app.Run();
