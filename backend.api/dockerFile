@@ -1,13 +1,16 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 
-WORKDIR /app
+WORKDIR /src
 
 COPY backend.api.csproj ./
-RUN dotnet restore
+RUN dotnet restore backend.api.csproj
 
-COPY . ./
+COPY . .
 
-RUN dotnet publish backend.api.csproj -c Release -o /app/publish
+RUN dotnet publish backend.api.csproj \
+    -c Release \
+    -o /app/publish \
+    --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 
