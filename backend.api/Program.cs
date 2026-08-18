@@ -88,5 +88,12 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
+app.MapGet("/api/debug/cors", () =>
+{
+    return Results.Ok(new
+    {
+        message = "Bright Bytes backend is running",
+        version = "cors-fix-1"
+    });
+});
 app.Run();
