@@ -18,5 +18,6 @@ namespace backend.api.src.models
     public bool IsPublished { get; set; }
 
     public List<Lesson> Lessons { get; set; } = [];
+    public List<CourseEnrollment> Enrollments { get; set; } = [];
 }
 }

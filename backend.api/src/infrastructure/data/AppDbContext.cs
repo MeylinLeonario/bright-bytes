@@ -12,6 +12,10 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<User>()
             .HasIndex(u => u.Email)
             .IsUnique();
+
+        modelBuilder.Entity<CourseEnrollment>()
+            .HasIndex(enrollment => new { enrollment.UserId, enrollment.CourseId })
+            .IsUnique();
     }
     public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options)
@@ -24,4 +28,5 @@ public class AppDbContext : DbContext
     public DbSet<VocabularyItem> VocabularyItems => Set<VocabularyItem>();
     public DbSet<Reading> Readings => Set<Reading>();
     public DbSet<UserProgress> UserProgress => Set<UserProgress>();
+    public DbSet<CourseEnrollment> CourseEnrollments => Set<CourseEnrollment>();
 }

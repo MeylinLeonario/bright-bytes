@@ -52,6 +52,7 @@ export interface StudentCourse {
   title: string;
   description: string;
   level: string;
+  enrolled: boolean;
   lessons: Array<{ id: string; title: string; grammarPoint: string; order: number; completed: boolean }>;
 }
 
@@ -105,6 +106,13 @@ export async function apiFetch<T>(
   return response.json() as Promise<T>;
 }
 
+export function enrollInStudentCourse(courseId: string) {
+  return apiFetch<{ courseId: string; enrolled: boolean; enrolledAt: string }>(
+    `/api/student/courses/${courseId}/enroll`,
+    { method: "POST" }
+  );
+}
+
 export function getCurrentUser() {
   return apiFetch<CurrentUser>("/api/auth/me");
 }
@@ -125,4 +133,6 @@ export function completeStudentLesson(lessonId: string) {
   return apiFetch<{ completed: boolean; completedAt: string }>(
     `/api/student/lessons/${lessonId}/complete`, { method: "POST" }
   );
+
+
 }

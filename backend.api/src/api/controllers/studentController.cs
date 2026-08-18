@@ -24,7 +24,7 @@ public class StudentController : ControllerBase
     public async Task<IActionResult> GetCourses()
     {
         if (!TryGetUserId(out var userId)) return Unauthorized();
-
+        await EnsureDefaultEnrollment(userId);
         var completedLessonIds = await _context.UserProgress
             .Where(progress => progress.UserId == userId && progress.Completed)
             .Select(progress => progress.LessonId)
@@ -40,6 +40,7 @@ public class StudentController : ControllerBase
                 course.Title,
                 course.Description,
                 course.Level,
+                Enrolled = course.Enrollments.Any(enrollment => enrollment.UserId == userId),
                 Lessons = course.Lessons
                     .Where(lesson => lesson.IsPublished)
                     .OrderBy(lesson => lesson.Order)
@@ -57,14 +58,40 @@ public class StudentController : ControllerBase
         return Ok(courses);
     }
 
+    [HttpPost("courses/{courseId:guid}/enroll")]
+    public async Task<IActionResult> Enroll(Guid courseId)
+    {
+        if (!TryGetUserId(out var userId)) return Unauthorized();
+
+        var course = await _context.Courses
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item => item.Id == courseId && item.IsPublished);
+        if (course is null) return NotFound(new { message = "Course not found." });
+
+        var enrollment = await _context.CourseEnrollments
+            .FirstOrDefaultAsync(item => item.UserId == userId && item.CourseId == courseId);
+        if (enrollment is null)
+        {
+            enrollment = new backend.api.src.models.CourseEnrollment
+            {
+                Id = Guid.NewGuid(), UserId = userId, CourseId = courseId
+            };
+            _context.CourseEnrollments.Add(enrollment);
+            await _context.SaveChangesAsync();
+        }
+
+        return Ok(new { courseId, enrolled = true, enrollment.EnrolledAt });
+    }
+
     [HttpGet("lessons/{lessonId:guid}")]
     public async Task<IActionResult> GetLesson(Guid lessonId)
     {
         if (!TryGetUserId(out var userId)) return Unauthorized();
-
+        await EnsureDefaultEnrollment(userId);
         var lesson = await _context.Lessons
             .AsNoTracking()
-            .Where(item => item.Id == lessonId && item.IsPublished && item.Course.IsPublished)
+            .Where(item => item.Id == lessonId && item.IsPublished && item.Course.IsPublished &&
+                item.Course.Enrollments.Any(enrollment => enrollment.UserId == userId))
             .Select(item => new
             {
                 item.Id,
@@ -87,7 +114,7 @@ public class StudentController : ControllerBase
             })
             .FirstOrDefaultAsync();
 
-        if (lesson is null) return NotFound(new { message = "Lesson not found." });
+        if (lesson is null) return NotFound(new { message = "Lesson not found or you are not enrolled in its course." });
 
         var lessonIds = await _context.Lessons
             .Where(item => item.CourseId == lesson.CourseId && item.IsPublished)
@@ -113,9 +140,11 @@ public class StudentController : ControllerBase
     public async Task<IActionResult> CompleteLesson(Guid lessonId)
     {
         if (!TryGetUserId(out var userId)) return Unauthorized();
+        await EnsureDefaultEnrollment(userId);
         var exists = await _context.Lessons.AnyAsync(lesson =>
-            lesson.Id == lessonId && lesson.IsPublished && lesson.Course.IsPublished);
-        if (!exists) return NotFound(new { message = "Lesson not found." });
+            lesson.Id == lessonId && lesson.IsPublished && lesson.Course.IsPublished &&
+            lesson.Course.Enrollments.Any(enrollment => enrollment.UserId == userId));
+        if (!exists) return NotFound(new { message = "Lesson not found or you are not enrolled in its course." });
 
         var progress = await _context.UserProgress.FirstOrDefaultAsync(item =>
             item.UserId == userId && item.LessonId == lessonId);
@@ -162,6 +191,8 @@ public class StudentController : ControllerBase
             });
         }
 
+        await EnsureDefaultEnrollment(userId);
+
         // 1. Lecciones completadas
         var completedLessons = await _context.UserProgress
             .AsNoTracking()
@@ -199,11 +230,15 @@ public class StudentController : ControllerBase
         // 5. Curso actual
         var currentCourse = await _context.Courses
             .AsNoTracking()
+            .Where(course => course.IsPublished &&
+                course.Enrollments.Any(enrollment => enrollment.UserId == userId))
+            .OrderByDescending(course => course.Level == "A2")
+            .ThenBy(course => course.Enrollments
+                .Where(enrollment => enrollment.UserId == userId)
+                .Min(enrollment => enrollment.EnrolledAt))
+
             .Include(course => course.Lessons)
-            .FirstOrDefaultAsync(course =>
-                course.Level == "A2" &&
-                course.IsPublished
-            );
+            .FirstOrDefaultAsync();
 
         double courseProgress = 0;
 
@@ -447,5 +482,23 @@ public class StudentController : ControllerBase
       private bool TryGetUserId(out Guid userId)
     {
         return Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
+    }
+
+    private async Task EnsureDefaultEnrollment(Guid userId)
+    {
+        if (await _context.CourseEnrollments.AnyAsync(enrollment => enrollment.UserId == userId)) return;
+
+        var defaultCourseId = await _context.Courses
+            .Where(course => course.IsPublished && course.Level == "A2")
+            .OrderBy(course => course.Title)
+            .Select(course => (Guid?)course.Id)
+            .FirstOrDefaultAsync();
+        if (!defaultCourseId.HasValue) return;
+
+        _context.CourseEnrollments.Add(new backend.api.src.models.CourseEnrollment
+        {
+            Id = Guid.NewGuid(), UserId = userId, CourseId = defaultCourseId.Value
+        });
+        await _context.SaveChangesAsync();
     }
 }

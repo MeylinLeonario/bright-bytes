@@ -22,5 +22,7 @@ namespace backend.api.src.models
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime? LastActiveAt { get; set; }
+
+    public List<CourseEnrollment> CourseEnrollments { get; set; } = [];
 }
 }
