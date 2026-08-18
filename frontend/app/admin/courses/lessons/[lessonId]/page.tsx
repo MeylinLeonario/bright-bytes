@@ -117,8 +117,10 @@ export default function EditLessonPage() {
       });
       setSaved(true);
       router.refresh();
-    } catch {
-      setError("No pudimos guardar los cambios. Revisa los campos e inténtalo de nuevo.");
+    } catch (error) {
+      const detail = error instanceof Error ? ` ${error.message}` : "";
+      setError(`No pudimos guardar los cambios.${detail}`);
+      
     } finally {
       setSaving(false);
     }

@@ -339,6 +339,7 @@ namespace backend.api.src.api.controllers
             [FromBody] CreateLessonDTO dto
         )
         {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
             var lesson = await _context.Lessons
                 .Include(lesson => lesson.Vocabulary)
                 .Include(lesson => lesson.Readings)
@@ -356,26 +357,35 @@ namespace backend.api.src.api.controllers
             lesson.SpeakingPrompt = dto.SpeakingPrompt.Trim();
             lesson.IsPublished = dto.IsPublished;
 
-            _context.VocabularyItems.RemoveRange(lesson.Vocabulary);
-            _context.Readings.RemoveRange(lesson.Readings);
+            _context.VocabularyItems.RemoveRange(lesson.Vocabulary.ToList());
+            _context.Readings.RemoveRange(lesson.Readings.ToList());
+            await _context.SaveChangesAsync();
 
-            lesson.Vocabulary = dto.Vocabulary.Select(item => new VocabularyItem
-            {
+
+            var vocabulary = dto.Vocabulary.Select(item => new VocabularyItem
+                {
                 Id = Guid.NewGuid(),
+                LessonId = lesson.Id,
                 Word = item.Word.Trim(),
                 Meaning = item.Meaning.Trim(),
                 Example = item.Example.Trim(),
                 AudioUrl = item.AudioUrl
             }).ToList();
-            lesson.Readings = dto.Readings.Select(item => new Reading
+            
+            var readings = dto.Readings.Select(item => new Reading
             {
                 Id = Guid.NewGuid(),
+                LessonId = lesson.Id,
                 Title = item.Title.Trim(),
                 Text = item.Text.Trim(),
                 AudioUrl = item.AudioUrl
             }).ToList();
 
+            _context.VocabularyItems.AddRange(vocabulary);
+            _context.Readings.AddRange(readings);
+
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return Ok(new
             {

@@ -100,7 +100,15 @@ export async function apiFetch<T>(
   });
 
   if (!response.ok) {
-    throw new Error(`API error ${response.status}`);
+    const errorBody = await response.json().catch(() => null) as {
+      detail?: string;
+      message?: string;
+      traceId?: string;
+    } | null;
+    const message = errorBody?.message ?? errorBody?.detail ?? `API error ${response.status}`;
+    const traceSuffix = errorBody?.traceId ? ` (Trace ID: ${errorBody.traceId})` : "";
+
+    throw new Error(`${message}${traceSuffix}`);
   }
 
   return response.json() as Promise<T>;

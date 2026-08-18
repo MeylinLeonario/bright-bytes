@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using backend.api.src.application.services;
+using Microsoft.AspNetCore.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -53,11 +54,20 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy
-            .WithOrigins(
+        var configuredOrigins = builder.Configuration
+            .GetSection("Cors:AllowedOrigins")
+            .Get<string[]>();
+
+        string[] allowedOrigins = configuredOrigins is { Length: > 0 }
+            ? configuredOrigins
+            :
+            [
                 "http://localhost:3000",
                 "https://bright-bytes-alpha.vercel.app"
-            )
+            ];
+
+        policy
+            .WithOrigins(allowedOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -80,6 +90,38 @@ using (var scope = app.Services.CreateScope())
 app.UseRouting();
 
 app.UseCors();
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        var exception = context.Features
+            .Get<IExceptionHandlerFeature>()?
+            .Error;
+        var logger = context.RequestServices
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger("GlobalExceptionHandler");
+
+        logger.LogError(
+            exception,
+            "Unhandled error while processing {Method} {Path}. Trace ID: {TraceId}",
+            context.Request.Method,
+            context.Request.Path,
+            context.TraceIdentifier
+        );
+
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        await Results.Problem(
+            statusCode: StatusCodes.Status500InternalServerError,
+            title: "The request could not be completed.",
+            detail: "Check the server logs using the supplied trace ID.",
+            extensions: new Dictionary<string, object?>
+            {
+                ["traceId"] = context.TraceIdentifier
+            }
+        ).ExecuteAsync(context);
+    });
+});
+
 
 app.UseAuthentication();
 app.UseAuthorization();
