@@ -286,15 +286,24 @@ export default function CoursePage() {
                         </p>
                       </div>
 
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-bold ${
-                          lesson.isPublished
-                            ? "bg-emerald-50 text-emerald-600"
-                            : "bg-amber-50 text-amber-600"
-                        }`}
-                      >
-                        {lesson.isPublished ? "Published" : "Draft"}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-bold ${
+                            lesson.isPublished
+                              ? "bg-emerald-50 text-emerald-600"
+                              : "bg-amber-50 text-amber-600"
+                          }`}
+                        >
+                          {lesson.isPublished ? "Published" : "Draft"}
+                        </span>
+                        <Link
+                          href={`/admin/courses/lessons/${lesson.id}`}
+                          aria-label={`Edit ${lesson.title}`}
+                          className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-400 transition hover:border-purple-200 hover:bg-purple-50 hover:text-purple-600"
+                        >
+                          <Pencil size={15} />
+                        </Link>
+                      </div>
                     </div>
                   ))}
               </div>

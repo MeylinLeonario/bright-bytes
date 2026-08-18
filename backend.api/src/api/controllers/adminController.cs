@@ -172,7 +172,7 @@ namespace backend.api.src.api.controllers
                 course.IsPublished
             });
         }
-        
+
         // GET: /api/admin/courses/{courseId}/lessons
         [HttpGet("courses/{courseId:guid}/lessons")]
         public async Task<IActionResult> GetLessons(Guid courseId)
@@ -290,6 +290,107 @@ namespace backend.api.src.api.controllers
                 })
             });
         }
+
+         // GET: /api/admin/lessons/{lessonId}
+        [HttpGet("lessons/{lessonId:guid}")]
+        public async Task<IActionResult> GetLesson(Guid lessonId)
+        {
+            var lesson = await _context.Lessons
+                .Where(lesson => lesson.Id == lessonId)
+                .Select(lesson => new
+                {
+                    lesson.Id,
+                    lesson.CourseId,
+                    CourseTitle = lesson.Course.Title,
+                    lesson.Title,
+                    lesson.GrammarPoint,
+                    lesson.GrammarExplanation,
+                    lesson.WritingPrompt,
+                    lesson.SpeakingPrompt,
+                    lesson.Order,
+                    lesson.IsPublished,
+                    Vocabulary = lesson.Vocabulary.Select(item => new
+                    {
+                        item.Id,
+                        item.Word,
+                        item.Meaning,
+                        item.Example,
+                        item.AudioUrl
+                    }).ToList(),
+                    Readings = lesson.Readings.Select(item => new
+                    {
+                        item.Id,
+                        item.Title,
+                        item.Text,
+                        item.AudioUrl
+                    }).ToList()
+                })
+                .FirstOrDefaultAsync();
+
+            return lesson is null
+                ? NotFound(new { message = "Lesson not found." })
+                : Ok(lesson);
+        }
+
+        // PUT: /api/admin/lessons/{lessonId}
+        [HttpPut("lessons/{lessonId:guid}")]
+        public async Task<IActionResult> UpdateLesson(
+            Guid lessonId,
+            [FromBody] CreateLessonDTO dto
+        )
+        {
+            var lesson = await _context.Lessons
+                .Include(lesson => lesson.Vocabulary)
+                .Include(lesson => lesson.Readings)
+                .FirstOrDefaultAsync(lesson => lesson.Id == lessonId);
+
+            if (lesson is null)
+            {
+                return NotFound(new { message = "Lesson not found." });
+            }
+
+            lesson.Title = dto.Title.Trim();
+            lesson.GrammarPoint = dto.GrammarPoint.Trim();
+            lesson.GrammarExplanation = dto.GrammarExplanation.Trim();
+            lesson.WritingPrompt = dto.WritingPrompt.Trim();
+            lesson.SpeakingPrompt = dto.SpeakingPrompt.Trim();
+            lesson.IsPublished = dto.IsPublished;
+
+            _context.VocabularyItems.RemoveRange(lesson.Vocabulary);
+            _context.Readings.RemoveRange(lesson.Readings);
+
+            lesson.Vocabulary = dto.Vocabulary.Select(item => new VocabularyItem
+            {
+                Id = Guid.NewGuid(),
+                Word = item.Word.Trim(),
+                Meaning = item.Meaning.Trim(),
+                Example = item.Example.Trim(),
+                AudioUrl = item.AudioUrl
+            }).ToList();
+            lesson.Readings = dto.Readings.Select(item => new Reading
+            {
+                Id = Guid.NewGuid(),
+                Title = item.Title.Trim(),
+                Text = item.Text.Trim(),
+                AudioUrl = item.AudioUrl
+            }).ToList();
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                lesson.Id,
+                lesson.CourseId,
+                lesson.Title,
+                lesson.GrammarPoint,
+                lesson.GrammarExplanation,
+                lesson.WritingPrompt,
+                lesson.SpeakingPrompt,
+                lesson.Order,
+                lesson.IsPublished
+            });
+        }
+
 
         // DELETE: /api/admin/lessons/{lessonId}
         [HttpDelete("lessons/{lessonId:guid}")]
