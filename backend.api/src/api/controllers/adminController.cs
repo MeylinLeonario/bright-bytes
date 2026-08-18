@@ -9,7 +9,7 @@ namespace backend.api.src.api.controllers
 {
     [ApiController]
     [Route("api/admin")]
-    [Authorize(Roles = "admin")]
+    [Authorize]
     public class AdminController : ControllerBase
     {
         private readonly AppDbContext _context;
