@@ -51,17 +51,22 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
-var frontendUrl = builder.Configuration["FRONTEND_URL"];
+var frontendUrls = new[]
+{
+    "http://localhost:3000",
+    "https://bright-bytes-alpha.vercel.app"
+}
+    .Concat((builder.Configuration["FRONTEND_URL"] ?? string.Empty)
+        .Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+    .Distinct(StringComparer.OrdinalIgnoreCase)
+    .ToArray();
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
     {
         policy
-            .WithOrigins(
-                "http://localhost:3000",
-                frontendUrl!
-            )
+            .WithOrigins(frontendUrls)
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
