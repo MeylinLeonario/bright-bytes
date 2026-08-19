@@ -168,7 +168,13 @@ export function correctStudentExercise(lessonId: string, exerciseType: "writing"
 
 export function correctStudentSpeakingExercise(lessonId: string, audio: Blob, durationSeconds: number) {
   const form = new FormData();
-  const extension = audio.type.includes("ogg") ? "ogg" : audio.type.includes("mp4") ? "m4a" : "webm";
+  const extension = audio.type.includes("ogg")
+    ? "ogg"
+    : audio.type.includes("mp4")
+      ? "m4a"
+      : audio.type.includes("wav")
+        ? "wav"
+        : "webm";
   form.append("audio", audio, `speaking.${extension}`);
   form.append("durationSeconds", durationSeconds.toString());
 

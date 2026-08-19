@@ -14,8 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { completeStudentLesson, correctStudentExercise, correctStudentSpeakingExercise, getStudentLesson, type ExerciseCorrection, type StudentLesson } from "@/lib/api";
 
 function CorrectionResult({ result }: { result: ExerciseCorrection }) {
-  return <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4"><div><p className="text-xs font-semibold uppercase text-emerald-700">Corrected answer</p><p className="mt-1 whitespace-pre-line text-sm leading-6">{result.correctedText}</p></div><Separator /><div><p className="text-xs font-semibold uppercase text-emerald-700">Teacher feedback</p><p className="mt-1 text-sm leading-6 text-muted-foreground">{result.feedback}</p></div>{!result.syncedToGoogleSheets && <p className="text-xs text-amber-700">Your correction was saved, but the teacher sheet is not configured or temporarily unavailable.</p>}</div>;
-}
+  return <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4"><div><p className="text-xs font-semibold uppercase text-emerald-700">Corrected answer</p><p className="mt-1 whitespace-pre-line text-sm leading-6">{result.correctedText}</p></div><Separator /><div><p className="text-xs font-semibold uppercase text-emerald-700">Teacher feedback</p><p className="mt-1 text-sm leading-6 text-muted-foreground">{result.feedback}</p></div></div>;}
 function WritingPractice({ prompt, initialAttempts }: { prompt: string; initialAttempts: number }) {
   const { lessonId } = useParams<{ lessonId: string }>();
   const [text, setText] = useState("");
@@ -72,7 +71,12 @@ function SpeakingPractice({ prompt, initialAttempts }: { prompt: string; initial
     setError(""); setResult(null);
     try {
       stream.current = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const nextRecorder = new MediaRecorder(stream.current);
+      const preferredMimeType = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus"]
+        .find(type => MediaRecorder.isTypeSupported(type));
+      const nextRecorder = new MediaRecorder(
+        stream.current,
+        preferredMimeType ? { mimeType: preferredMimeType } : undefined,
+      );
       chunks.current = [];
       nextRecorder.ondataavailable = event => { if (event.data.size) chunks.current.push(event.data); };
       nextRecorder.onstop = () => {
@@ -158,8 +162,6 @@ export default function LessonPage() {
     <Card><CardHeader><CardTitle className="flex items-center gap-2"><Sparkles /> Grammar point</CardTitle><CardDescription>{lesson.grammarPoint}</CardDescription></CardHeader><CardContent><div className="whitespace-pre-line text-sm leading-7 text-muted-foreground">{lesson.grammarExplanation}</div></CardContent></Card>
     <Card><CardHeader><CardTitle className="flex items-center gap-2"><BookOpen /> Vocabulary</CardTitle><CardDescription>{lesson.vocabulary.length} useful words for this lesson</CardDescription></CardHeader><CardContent><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{lesson.vocabulary.map(item => <div key={item.id} className="rounded-xl border p-4"><div className="flex justify-between"><strong>{item.word}</strong>{item.audioUrl && <Button aria-label={`Play ${item.word}`} variant="ghost" size="icon-sm" onClick={() => playAudio(item.audioUrl)}><Volume2 /></Button>}</div><p className="text-xs text-muted-foreground">{item.meaning}</p><Separator className="my-3"/><p className="text-xs leading-5">{item.example}</p></div>)}</div></CardContent></Card>
     <Card><CardHeader><CardTitle className="flex items-center gap-2"><BookOpen /> Read & listen</CardTitle></CardHeader><CardContent className="space-y-4">{lesson.readings.map((reading, index) => <div key={reading.id} className="rounded-xl border p-5"><div className="flex justify-between"><div><p className="text-xs text-muted-foreground">READING {index + 1}</p><h3 className="font-semibold">{reading.title}</h3></div>{reading.audioUrl && <Button variant="outline" size="sm" onClick={() => playAudio(reading.audioUrl)}><Play /> Listen</Button>}</div><p className="mt-4 whitespace-pre-line text-sm leading-7 text-muted-foreground">{reading.text}</p></div>)}</CardContent></Card>
-    <Card><CardHeader><CardTitle className="flex items-center gap-2"><PenLine /> Writing practice</CardTitle><CardDescription>Use today&apos;s grammar and vocabulary.</CardDescription></CardHeader><CardContent><p className="rounded-xl bg-muted p-4 text-sm">{lesson.writingPrompt}</p><Textarea className="mt-4 min-h-40" placeholder="Start writing here..." /></CardContent></Card>
-    <Card><CardHeader><CardTitle className="flex items-center gap-2"><Mic /> Speaking practice</CardTitle></CardHeader><CardContent><p className="rounded-xl bg-muted p-4 text-sm">{lesson.speakingPrompt}</p><p className="mt-3 text-xs text-muted-foreground">Practice aloud, then complete the lesson when you feel ready.</p></CardContent></Card>
     <WritingPractice prompt={lesson.writingPrompt} initialAttempts={lesson.writingAttemptsUsed} />
     <SpeakingPractice prompt={lesson.speakingPrompt} initialAttempts={lesson.speakingAttemptsUsed} />
     {error && <p className="text-sm text-red-600">{error}</p>}

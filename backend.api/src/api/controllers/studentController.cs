@@ -18,13 +18,17 @@ public class StudentController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly ExerciseCorrectionService _correctionService;
+    private readonly ILogger<StudentController> _logger;
 
-    public StudentController(AppDbContext context, ExerciseCorrectionService correctionService)
-    {
-        _context = context;
-        _correctionService = correctionService;
+    public StudentController(
+            AppDbContext context,
+            ExerciseCorrectionService correctionService,
+            ILogger<StudentController> logger)
+        {
+            _context = context;
+            _correctionService = correctionService;
+            _logger = logger;
     }
-
     [HttpGet("courses")]
     public async Task<IActionResult> GetCourses()
     {
@@ -126,6 +130,7 @@ public class StudentController : ControllerBase
             AttemptsRemaining = 2 - correction.AttemptNumber, correction.SyncedToGoogleSheets
         });
     }
+    
 
     [HttpPost("courses/{courseId:guid}/enroll")]
     public async Task<IActionResult> Enroll(Guid courseId)

@@ -5,6 +5,12 @@ namespace backend.api.src.application.services;
 
 public record AiCorrection(string CorrectedText, string Feedback);
 
+public sealed class AudioTranscriptionException : Exception
+{
+    public AudioTranscriptionException(string message, Exception? innerException = null)
+        : base(message, innerException) { }
+}
+
 public class ExerciseCorrectionService
 {
     private readonly HttpClient _httpClient;
@@ -85,14 +91,6 @@ public class ExerciseCorrectionService
         return correction ?? throw new InvalidOperationException("OpenAI returned an invalid correction.");
     }
 
-    public async Task<bool> AppendToGoogleSheetsAsync(object row, CancellationToken cancellationToken)
-    {
-        var webhookUrl = _configuration["GoogleSheets:WebhookUrl"];
-        if (string.IsNullOrWhiteSpace(webhookUrl)) return false;
-        using var response = await _httpClient.PostAsJsonAsync(webhookUrl, row, cancellationToken);
-        return response.IsSuccessStatusCode;
-    }
-
     public async Task<string> TranscribeAsync(Stream audio, string fileName, string contentType, CancellationToken cancellationToken)
     {
         var apiKey = _configuration["OpenAI:ApiKey"];
@@ -103,7 +101,13 @@ public class ExerciseCorrectionService
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
         using var content = new MultipartFormDataContent();
         var audioContent = new StreamContent(audio);
-        audioContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        // Browsers include the codec in MediaRecorder MIME types (for example,
+        // "audio/webm;codecs=opus"). Parse the complete value instead of using
+        // the media-type-only constructor, which rejects parameters and caused
+        // speaking reviews to fail before the request reached OpenAI.
+        audioContent.Headers.ContentType = MediaTypeHeaderValue.TryParse(contentType, out var parsedContentType)
+            ? parsedContentType
+            : new MediaTypeHeaderValue("application/octet-stream");
         content.Add(audioContent, "file", fileName);
         content.Add(new StringContent(_configuration["OpenAI:TranscriptionModel"] ?? "gpt-4o-mini-transcribe"), "model");
         request.Content = content;
@@ -114,6 +118,15 @@ public class ExerciseCorrectionService
         using var document = JsonDocument.Parse(payload);
         return document.RootElement.GetProperty("text").GetString()?.Trim()
             ?? throw new InvalidOperationException("OpenAI returned no transcription.");
+    }
+
+
+    public async Task<bool> AppendToGoogleSheetsAsync(object row, CancellationToken cancellationToken)
+    {
+        var webhookUrl = _configuration["GoogleSheets:WebhookUrl"];
+        if (string.IsNullOrWhiteSpace(webhookUrl)) return false;
+        using var response = await _httpClient.PostAsJsonAsync(webhookUrl, row, cancellationToken);
+        return response.IsSuccessStatusCode;
     }
 
 }
