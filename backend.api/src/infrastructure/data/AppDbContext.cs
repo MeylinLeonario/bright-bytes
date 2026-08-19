@@ -16,6 +16,16 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<CourseEnrollment>()
             .HasIndex(enrollment => new { enrollment.UserId, enrollment.CourseId })
             .IsUnique();
+
+        modelBuilder.Entity<ExerciseCorrection>()
+            .HasIndex(correction => new
+            {
+                correction.UserId,
+                correction.LessonId,
+                correction.ExerciseType,
+                correction.AttemptNumber
+            })
+            .IsUnique();
     }
     public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options)
@@ -29,4 +39,5 @@ public class AppDbContext : DbContext
     public DbSet<Reading> Readings => Set<Reading>();
     public DbSet<UserProgress> UserProgress => Set<UserProgress>();
     public DbSet<CourseEnrollment> CourseEnrollments => Set<CourseEnrollment>();
+    public DbSet<ExerciseCorrection> ExerciseCorrections => Set<ExerciseCorrection>();
 }

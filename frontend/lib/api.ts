@@ -69,10 +69,20 @@ export interface StudentLesson {
   completed: boolean;
   previousLessonId: string | null;
   nextLessonId: string | null;
+  writingAttemptsUsed: number;
+  speakingAttemptsUsed: number;
   vocabulary: Array<{ id: string; word: string; meaning: string; example: string; audioUrl: string | null }>;
   readings: Array<{ id: string; title: string; text: string; audioUrl: string | null }>;
+
 }
 
+export interface ExerciseCorrection {
+  correctedText: string;
+  feedback: string;
+  attemptNumber: number;
+  attemptsRemaining: number;
+  syncedToGoogleSheets: boolean;
+}
 
 export async function apiFetch<T>(
   endpoint: string,
@@ -141,6 +151,12 @@ export function completeStudentLesson(lessonId: string) {
   return apiFetch<{ completed: boolean; completedAt: string }>(
     `/api/student/lessons/${lessonId}/complete`, { method: "POST" }
   );
+}
 
 
+export function correctStudentExercise(lessonId: string, exerciseType: "writing" | "speaking", text: string) {
+  return apiFetch<ExerciseCorrection>(`/api/student/lessons/${lessonId}/corrections`, {
+    method: "POST",
+    body: JSON.stringify({ exerciseType, text }),
+  });
 }
