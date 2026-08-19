@@ -10,6 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddScoped<JwtService>();
+builder.Services.AddHttpClient<ExerciseCorrectionService>();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(

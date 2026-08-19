@@ -11,7 +11,39 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 
-import { completeStudentLesson, getStudentLesson, type StudentLesson } from "@/lib/api";
+import { completeStudentLesson, correctStudentExercise, getStudentLesson, type ExerciseCorrection, type StudentLesson } from "@/lib/api";
+
+type ExerciseType = "writing" | "speaking";
+
+function PracticeCard({ type, prompt, initialAttempts }: { type: ExerciseType; prompt: string; initialAttempts: number }) {
+  const { lessonId } = useParams<{ lessonId: string }>();
+  const [text, setText] = useState("");
+  const [attempts, setAttempts] = useState(initialAttempts);
+  const [result, setResult] = useState<ExerciseCorrection | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const Icon = type === "writing" ? PenLine : Mic;
+
+  const submit = async () => {
+    if (!text.trim() || words > 200 || attempts >= 2) return;
+    setLoading(true); setError("");
+    try {
+      const correction = await correctStudentExercise(lessonId, type, text);
+      setResult(correction); setAttempts(correction.attemptNumber);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "We couldn't correct this answer.");
+    } finally { setLoading(false); }
+  };
+
+  return <Card><CardHeader><CardTitle className="flex items-center gap-2"><Icon /> {type === "writing" ? "Writing" : "Speaking"} practice</CardTitle><CardDescription>OpenAI feedback · {2 - attempts} of 2 corrections remaining</CardDescription></CardHeader><CardContent className="space-y-4">
+    <p className="rounded-xl bg-muted p-4 text-sm">{prompt}</p>
+    <div><Textarea value={text} onChange={event => setText(event.target.value)} disabled={attempts >= 2 || loading} className="min-h-40" placeholder={type === "writing" ? "Start writing here..." : "Write what you would say aloud..."} /><div className="mt-2 flex justify-between text-xs"><span className={words > 200 ? "text-red-600" : "text-muted-foreground"}>{words}/200 words</span><span className="text-muted-foreground">Maximum 200 words</span></div></div>
+    <Button onClick={submit} disabled={!text.trim() || words > 200 || attempts >= 2 || loading}>{loading ? "Correcting..." : attempts >= 2 ? "No corrections remaining" : "Correct with AI"}<Sparkles /></Button>
+    {error && <p className="text-sm text-red-600">{error}</p>}
+    {result && <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4"><div><p className="text-xs font-semibold uppercase text-emerald-700">Corrected answer</p><p className="mt-1 whitespace-pre-line text-sm leading-6">{result.correctedText}</p></div><Separator /><div><p className="text-xs font-semibold uppercase text-emerald-700">Teacher feedback</p><p className="mt-1 text-sm leading-6 text-muted-foreground">{result.feedback}</p></div>{!result.syncedToGoogleSheets && <p className="text-xs text-amber-700">Your correction was saved, but the teacher sheet is not configured or temporarily unavailable.</p>}</div>}
+  </CardContent></Card>;
+}
 
 export default function LessonPage() {
   const { lessonId } = useParams<{ lessonId: string }>();
@@ -19,12 +51,20 @@ export default function LessonPage() {
   const [lesson, setLesson] = useState<StudentLesson | null>(null);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const activeAudio = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     getStudentLesson(lessonId).then(setLesson).catch(() => setError("We couldn't load this lesson. It may not be published yet."));
   }, [lessonId]);
 
-  const playAudio = (url: string | null) => { if (url) new Audio(url).play(); };
+  useEffect(() => () => { activeAudio.current?.pause(); }, []);
+  const playAudio = (url: string | null) => {
+    if (!url) return;
+    activeAudio.current?.pause();
+    activeAudio.current = new Audio(url);
+    void activeAudio.current.play();
+  };
+  
   const complete = async () => {
     if (!lesson || lesson.completed) return;
     setSaving(true); setError("");

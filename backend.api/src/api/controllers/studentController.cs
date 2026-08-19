@@ -5,6 +5,9 @@ using System.Security.Claims;
 
 using BrightBytes.Api.Data;
 using backend.api.src.application.DTOs;
+using backend.api.src.application.services;
+using backend.api.src.models;
+using System.Text.RegularExpressions;
 
 namespace BrightEnglish.Api.Controllers;
 
@@ -14,10 +17,12 @@ namespace BrightEnglish.Api.Controllers;
 public class StudentController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly ExerciseCorrectionService _correctionService;
 
-    public StudentController(AppDbContext context)
+    public StudentController(AppDbContext context, ExerciseCorrectionService correctionService)
     {
         _context = context;
+        _correctionService = correctionService;
     }
 
     [HttpGet("courses")]
@@ -124,6 +129,11 @@ public class StudentController : ControllerBase
         var index = lessonIds.IndexOf(lessonId);
         var completed = await _context.UserProgress.AnyAsync(progress =>
             progress.UserId == userId && progress.LessonId == lessonId && progress.Completed);
+        var correctionAttempts = await _context.ExerciseCorrections
+            .Where(correction => correction.UserId == userId && correction.LessonId == lessonId)
+            .GroupBy(correction => correction.ExerciseType)
+            .Select(group => new { Type = group.Key, Count = group.Count() })
+            .ToDictionaryAsync(item => item.Type, item => item.Count);
 
         return Ok(new
         {
@@ -131,8 +141,74 @@ public class StudentController : ControllerBase
             lesson.WritingPrompt, lesson.SpeakingPrompt, lesson.Order,
             lesson.CourseId, lesson.CourseTitle, lesson.Vocabulary, lesson.Readings,
             Completed = completed,
+            WritingAttemptsUsed = correctionAttempts.GetValueOrDefault("writing"),
+            SpeakingAttemptsUsed = correctionAttempts.GetValueOrDefault("speaking"),
             PreviousLessonId = index > 0 ? lessonIds[index - 1] : (Guid?)null,
             NextLessonId = index >= 0 && index < lessonIds.Count - 1 ? lessonIds[index + 1] : (Guid?)null
+        });
+    }
+
+    [HttpPost("lessons/{lessonId:guid}/corrections")]
+    public async Task<IActionResult> CorrectExercise(Guid lessonId, CorrectExerciseDTO dto, CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var userId)) return Unauthorized();
+        var exerciseType = dto.ExerciseType.Trim().ToLowerInvariant();
+        if (exerciseType is not ("writing" or "speaking"))
+            return BadRequest(new { message = "Exercise type must be writing or speaking." });
+
+        var text = dto.Text.Trim();
+        var wordCount = Regex.Matches(text, @"\b[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*\b").Count;
+        if (wordCount is < 1 or > 200)
+            return BadRequest(new { message = "Your answer must contain between 1 and 200 words." });
+
+        var lesson = await _context.Lessons.AsNoTracking().Where(item =>
+                item.Id == lessonId && item.IsPublished && item.Course.IsPublished &&
+                item.Course.Enrollments.Any(enrollment => enrollment.UserId == userId))
+            .Select(item => new
+            {
+                item.Title,
+                Prompt = exerciseType == "writing" ? item.WritingPrompt : item.SpeakingPrompt
+            }).FirstOrDefaultAsync(cancellationToken);
+        if (lesson is null) return NotFound(new { message = "Lesson not found or you are not enrolled in its course." });
+
+        var attemptsUsed = await _context.ExerciseCorrections.CountAsync(correction =>
+            correction.UserId == userId && correction.LessonId == lessonId &&
+            correction.ExerciseType == exerciseType, cancellationToken);
+        if (attemptsUsed >= 2)
+            return Conflict(new { message = "You have already used both corrections for this exercise." });
+
+        var result = await _correctionService.CorrectAsync(exerciseType, lesson.Prompt, text, cancellationToken);
+        var correction = new ExerciseCorrection
+        {
+            Id = Guid.NewGuid(), UserId = userId, LessonId = lessonId,
+            ExerciseType = exerciseType, AttemptNumber = attemptsUsed + 1,
+            OriginalText = text, CorrectedText = result.CorrectedText, Feedback = result.Feedback
+        };
+        _context.ExerciseCorrections.Add(correction);
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            return Conflict(new { message = "Another correction was submitted at the same time. Please refresh the lesson." });
+        }
+
+        var user = await _context.Users.AsNoTracking().Where(item => item.Id == userId)
+            .Select(item => new { item.Name, item.Email }).SingleAsync(cancellationToken);
+        correction.SyncedToGoogleSheets = await _correctionService.AppendToGoogleSheetsAsync(new
+        {
+            correction.Id, correction.CreatedAt, user.Name, user.Email, Lesson = lesson.Title,
+            correction.ExerciseType, correction.AttemptNumber, correction.OriginalText,
+            correction.CorrectedText, correction.Feedback
+        }, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return Ok(new
+        {
+            correction.CorrectedText, correction.Feedback, correction.AttemptNumber,
+            AttemptsRemaining = 2 - correction.AttemptNumber,
+            correction.SyncedToGoogleSheets
         });
     }
 
