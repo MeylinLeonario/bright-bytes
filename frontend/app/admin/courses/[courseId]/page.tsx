@@ -15,6 +15,8 @@ import {
   FileText,
   CheckCircle2,
   Upload,
+  LoaderCircle,
+  Trash2,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 
@@ -45,6 +47,9 @@ export default function CoursePage() {
   const [error, setError] = useState("");
   const [publishing, setPublishing] = useState(false);
   const [publicationError, setPublicationError] = useState("");
+
+  const [deletingLessonId, setDeletingLessonId] = useState<string | null>(null);
+  const [lessonError, setLessonError] = useState("");
 
   useEffect(() => {
     async function loadCourse() {
@@ -115,6 +120,36 @@ export default function CoursePage() {
       setPublishing(false);
     }
   };
+
+  const handleDeleteLesson = async (lesson: Lesson) => {
+    if (deletingLessonId) return;
+
+    const confirmed = window.confirm(
+      `¿Seguro que quieres borrar la lección “${lesson.title}”? Esta acción no se puede deshacer.`
+    );
+    if (!confirmed) return;
+
+    setDeletingLessonId(lesson.id);
+    setLessonError("");
+
+    try {
+      await apiFetch(`/api/admin/lessons/${lesson.id}`, { method: "DELETE" });
+      setCourse((current) => current ? {
+        ...current,
+        lessons: current.lessons
+          .filter((item) => item.id !== lesson.id)
+          .map((item) => item.order > lesson.order
+            ? { ...item, order: item.order - 1 }
+            : item),
+      } : current);
+    } catch (err) {
+      console.error(err);
+      setLessonError("No pudimos borrar la lección. Inténtalo de nuevo.");
+    } finally {
+      setDeletingLessonId(null);
+    }
+  };
+
 
 
   return (
@@ -267,6 +302,12 @@ export default function CoursePage() {
               </div>
             </div>
 
+            {lessonError && (
+              <p role="alert" className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+                {lessonError}
+              </p>
+            )}
+
             {course.lessons.length > 0 && (
               <div className="mb-6 space-y-3">
                 {course.lessons
@@ -303,6 +344,19 @@ export default function CoursePage() {
                         >
                           <Pencil size={15} />
                         </Link>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteLesson(lesson)}
+                          disabled={deletingLessonId !== null}
+                          aria-label={`Borrar ${lesson.title}`}
+                          className="flex h-9 w-9 items-center justify-center rounded-xl border border-red-100 text-red-400 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-wait disabled:opacity-50"
+                        >
+                          {deletingLessonId === lesson.id
+                            ? <LoaderCircle size={15} className="animate-spin" />
+                            : <Trash2 size={15} />}
+                        </button>
+                        
                       </div>
                     </div>
                   ))}

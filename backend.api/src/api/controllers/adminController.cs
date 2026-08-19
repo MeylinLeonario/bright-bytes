@@ -404,8 +404,10 @@ namespace backend.api.src.api.controllers
 
         // DELETE: /api/admin/lessons/{lessonId}
         [HttpDelete("lessons/{lessonId:guid}")]
-        public async Task<IActionResult> DeleteLesson(Guid lessonId)
+
+            public async Task<IActionResult> DeleteLesson(Guid lessonId)
         {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
             var lesson = await _context.Lessons
                 .FirstOrDefaultAsync(lesson => lesson.Id == lessonId);
 
@@ -417,9 +419,27 @@ namespace backend.api.src.api.controllers
                 });
             }
 
+            // UserProgress does not have an EF relationship to Lesson, so remove it
+            // explicitly. Corrections are also removed here to keep this operation
+            // independent of database cascade settings.
+            await _context.UserProgress
+                .Where(progress => progress.LessonId == lessonId)
+                .ExecuteDeleteAsync();
+            await _context.ExerciseCorrections
+                .Where(correction => correction.LessonId == lessonId)
+                .ExecuteDeleteAsync();
+            
             _context.Lessons.Remove(lesson);
 
             await _context.SaveChangesAsync();
+
+            // Keep the remaining lesson sequence contiguous after the deletion.
+            await _context.Lessons
+                .Where(item => item.CourseId == lesson.CourseId && item.Order > lesson.Order)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(item => item.Order, item => item.Order - 1));
+
+            await transaction.CommitAsync();
 
             return NoContent();
         }
