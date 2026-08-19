@@ -96,7 +96,7 @@ export async function apiFetch<T>(
 
   const headers = new Headers(options.headers);
 
-  if (!headers.has("Content-Type")) {
+  if (!headers.has("Content-Type") && !(options.body instanceof FormData)){
     headers.set("Content-Type", "application/json");
   }
 
@@ -163,5 +163,17 @@ export function correctStudentExercise(lessonId: string, exerciseType: "writing"
   return apiFetch<ExerciseCorrection>(`/api/student/lessons/${lessonId}/corrections`, {
     method: "POST",
     body: JSON.stringify({ exerciseType, text }),
+  });
+}
+
+export function correctStudentSpeakingExercise(lessonId: string, audio: Blob, durationSeconds: number) {
+  const form = new FormData();
+  const extension = audio.type.includes("ogg") ? "ogg" : audio.type.includes("mp4") ? "m4a" : "webm";
+  form.append("audio", audio, `speaking.${extension}`);
+  form.append("durationSeconds", durationSeconds.toString());
+
+  return apiFetch<ExerciseCorrection>(`/api/student/lessons/${lessonId}/speaking-corrections`, {
+    method: "POST",
+    body: form,
   });
 }

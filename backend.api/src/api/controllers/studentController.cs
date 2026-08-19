@@ -63,6 +63,70 @@ public class StudentController : ControllerBase
         return Ok(courses);
     }
 
+    [HttpPost("lessons/{lessonId:guid}/speaking-corrections")]
+    [RequestSizeLimit(15_000_000)]
+    public async Task<IActionResult> CorrectSpeakingExercise(
+        Guid lessonId, IFormFile audio, [FromForm] double durationSeconds, CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var userId)) return Unauthorized();
+        if (audio is null || audio.Length == 0)
+            return BadRequest(new { message = "Please record some audio before requesting a correction." });
+        if (audio.Length > 15_000_000)
+            return BadRequest(new { message = "The audio recording must be smaller than 15 MB." });
+        if (durationSeconds is <= 0 or > 90.5)
+            return BadRequest(new { message = "Your recording must be no longer than 1 minute and 30 seconds." });
+
+        var lesson = await _context.Lessons.AsNoTracking().Where(item =>
+                item.Id == lessonId && item.IsPublished && item.Course.IsPublished &&
+                item.Course.Enrollments.Any(enrollment => enrollment.UserId == userId))
+            .Select(item => new { item.Title, Prompt = item.SpeakingPrompt })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (lesson is null) return NotFound(new { message = "Lesson not found or you are not enrolled in its course." });
+
+        var attemptsUsed = await _context.ExerciseCorrections.CountAsync(correction =>
+            correction.UserId == userId && correction.LessonId == lessonId &&
+            correction.ExerciseType == "speaking", cancellationToken);
+        if (attemptsUsed >= 2)
+            return Conflict(new { message = "You have already used both corrections for this exercise." });
+
+        await using var stream = audio.OpenReadStream();
+        var transcription = await _correctionService.TranscribeAsync(
+            stream, audio.FileName, audio.ContentType ?? "audio/webm", cancellationToken);
+        var wordCount = Regex.Matches(transcription, @"\b[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*\b").Count;
+        if (wordCount is < 1 or > 200)
+            return BadRequest(new { message = "Your recording must contain between 1 and 200 words." });
+
+        var result = await _correctionService.CorrectAsync("speaking", lesson.Prompt, transcription, cancellationToken);
+        var correction = new ExerciseCorrection
+        {
+            Id = Guid.NewGuid(), UserId = userId, LessonId = lessonId, ExerciseType = "speaking",
+            AttemptNumber = attemptsUsed + 1, OriginalText = transcription,
+            CorrectedText = result.CorrectedText, Feedback = result.Feedback
+        };
+        _context.ExerciseCorrections.Add(correction);
+        try { await _context.SaveChangesAsync(cancellationToken); }
+        catch (DbUpdateException)
+        {
+            return Conflict(new { message = "Another correction was submitted at the same time. Please refresh the lesson." });
+        }
+
+        var user = await _context.Users.AsNoTracking().Where(item => item.Id == userId)
+            .Select(item => new { item.Name, item.Email }).SingleAsync(cancellationToken);
+        correction.SyncedToGoogleSheets = await _correctionService.AppendToGoogleSheetsAsync(new
+        {
+            correction.Id, correction.CreatedAt, user.Name, user.Email, Lesson = lesson.Title,
+            correction.ExerciseType, correction.AttemptNumber, correction.OriginalText,
+            correction.CorrectedText, correction.Feedback
+        }, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return Ok(new
+        {
+            correction.CorrectedText, correction.Feedback, correction.AttemptNumber,
+            AttemptsRemaining = 2 - correction.AttemptNumber, correction.SyncedToGoogleSheets
+        });
+    }
+
     [HttpPost("courses/{courseId:guid}/enroll")]
     public async Task<IActionResult> Enroll(Guid courseId)
     {

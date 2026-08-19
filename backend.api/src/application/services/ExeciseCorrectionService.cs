@@ -92,4 +92,28 @@ public class ExerciseCorrectionService
         using var response = await _httpClient.PostAsJsonAsync(webhookUrl, row, cancellationToken);
         return response.IsSuccessStatusCode;
     }
+
+    public async Task<string> TranscribeAsync(Stream audio, string fileName, string contentType, CancellationToken cancellationToken)
+    {
+        var apiKey = _configuration["OpenAI:ApiKey"];
+        if (string.IsNullOrWhiteSpace(apiKey))
+            throw new InvalidOperationException("OpenAI:ApiKey is not configured.");
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/audio/transcriptions");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        using var content = new MultipartFormDataContent();
+        var audioContent = new StreamContent(audio);
+        audioContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        content.Add(audioContent, "file", fileName);
+        content.Add(new StringContent(_configuration["OpenAI:TranscriptionModel"] ?? "gpt-4o-mini-transcribe"), "model");
+        request.Content = content;
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        var payload = await response.Content.ReadAsStringAsync(cancellationToken);
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(payload);
+        return document.RootElement.GetProperty("text").GetString()?.Trim()
+            ?? throw new InvalidOperationException("OpenAI returned no transcription.");
+    }
+
 }
