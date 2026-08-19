@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, BookOpen, CheckCircle2, Mic, PenLine, Play, Sparkles, Volume2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
