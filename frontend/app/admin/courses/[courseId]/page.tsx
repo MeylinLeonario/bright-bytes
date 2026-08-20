@@ -271,7 +271,7 @@ export default function CoursePage() {
           <StatCard
             icon={<Users size={20} />}
             label="Students"
-            value="0"
+            value={course.studentCount.toString()}
           />
 
           <StatCard
