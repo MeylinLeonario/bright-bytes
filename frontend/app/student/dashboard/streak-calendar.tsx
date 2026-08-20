@@ -19,13 +19,12 @@ export function StreakCalendar({ activity }: { activity: Array<{ date: string; i
 
   return (
     <div className="overflow-x-auto pb-1">
-      <div className="grid min-w-[620px] grid-flow-col grid-rows-7 gap-1.5" aria-label="Study activity from the last 13 weeks">
+      <div className="grid w-max grid-flow-col grid-rows-7 gap-1.5" aria-label="Study activity from the last 13 weeks">
         {days.map(({ date, key, intensity, future }, index) => (
           <div
             key={key}
             title={`${date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}: ${intensity === 0 ? "No activity" : intensity === 1 ? "Lesson opened" : intensity === 2 ? "One practice completed" : "Writing and speaking completed"}`}
-            className={cn("aspect-square min-w-4 rounded-[4px] ring-1 ring-inset ring-border/40", future ? "opacity-0" : intensityClass[intensity])}
-          >
+            className={cn("size-3.5 rounded-[3px] ring-1 ring-inset ring-border/40 sm:size-4", future ? "opacity-0" : intensityClass[intensity])}>
             {index < 7 && <span className="sr-only">{DAY_LABELS[index]}</span>}
           </div>
         ))}
