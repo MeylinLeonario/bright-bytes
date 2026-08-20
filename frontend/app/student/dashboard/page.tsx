@@ -63,13 +63,13 @@ export default function StudentDashboard() {
       <section className="grid gap-4 lg:grid-cols-[1.5fr_.5fr]">
           <Card className="relative overflow-hidden border-primary/20 shadow-sm before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-primary">
             <CardHeader className="flex-row items-start justify-between gap-4 pb-2 pl-6">
-        <div><CardDescription className="font-medium">Continue learning</CardDescription><CardTitle className="mt-1 text-2xl">{loading ? "Loading your lesson..." : dashboard?.continueLesson?.title ?? "You’re all caught up!"}</CardTitle></div>
+        <div><CardDescription className="font-medium">Continua aprendiendo</CardDescription><CardTitle className="mt-1 text-2xl">{loading ? "Loading your lesson..." : dashboard?.continueLesson?.title ?? "You’re all caught up!"}</CardTitle></div>
             <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm"><BookOpen className="size-5" strokeWidth={2.25} /></div>
             </CardHeader>
             <CardContent className="pl-6">
               {dashboard?.continueLesson ? <>
                 <p className="text-sm text-muted-foreground">Lesson {dashboard.continueLesson.order} · {dashboard.continueLesson.grammarPoint}</p>
-                <div className="mt-4 flex flex-wrap items-center gap-3"><Link href={`/student/lessons/${dashboard.continueLesson.id}`} className={buttonVariants({ size: "lg", className: "gap-2 px-6" })}>Continue lesson <ArrowRight /></Link><span className="text-xs text-muted-foreground">Pick up where you left off</span></div>
+                <div className="mt-4 flex flex-wrap items-center gap-3"><Link href={`/student/lessons/${dashboard.continueLesson.id}`} className={buttonVariants({ size: "lg", className: "gap-2 px-6" })}>Continue lesson <ArrowRight /></Link><span className="text-xs text-muted-foreground">Retoma donde lo dejaste</span></div>
               </> : <div className="flex flex-wrap items-center gap-3"><p className="text-sm text-muted-foreground">Explore your courses and choose your next challenge.</p><Link href="/student/courses" className={buttonVariants({ className: "gap-2" })}>Choose a lesson <ArrowRight /></Link></div>}
     
                 </CardContent>
@@ -82,7 +82,7 @@ export default function StudentDashboard() {
         <section className="grid gap-4 md:grid-cols-3">
           <Card className="overflow-hidden border-primary/20 bg-foreground text-background shadow-sm md:col-span-2">
             <CardContent className="flex flex-col items-start justify-between gap-4 p-5 sm:flex-row sm:items-center">
-              <div className="flex gap-4"><div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground"><Sparkles className="size-5" /></div><div><p className="text-xs font-semibold uppercase tracking-[.15em] text-background/60">Quick review · 1–2 min</p><h2 className="mt-1 text-xl font-semibold">Make yesterday’s words stick.</h2><p className="mt-1 text-sm text-background/65">Choose a completed lesson and flip through its vocabulary.</p></div></div>
+              <div className="flex gap-4"><div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground"><Sparkles className="size-5" /></div><div><p className="text-xs font-semibold uppercase tracking-[.15em] text-background/60">Repaso rápido · 1–2 min</p><h2 className="mt-1 text-xl font-semibold">Recuerda las palabras de ayer.</h2><p className="mt-1 text-sm text-background/65"> Escoge una lección completada y practica su vocabulario.</p></div></div>
               <Link href="/student/review" className={buttonVariants({ size: "lg", className: "shrink-0 gap-2 bg-chart-2 px-6 text-white hover:bg-chart-2/80" })}>Start review <ArrowRight /></Link>
             </CardContent>
           </Card>
@@ -92,14 +92,14 @@ export default function StudentDashboard() {
         <section className="grid items-start gap-4 lg:grid-cols-[1.5fr_.5fr]">
           <Card className="shadow-sm">
             <CardHeader className="flex-row items-start justify-between pb-2">
-              <div><CardTitle className="flex items-center gap-2 text-lg"><Flame className="size-5 text-primary" /> Learning streak</CardTitle><CardDescription className="mt-1">Your study activity over the last 13 weeks</CardDescription></div>
+              <div><CardTitle className="flex items-center gap-2 text-lg"><Flame className="size-5 text-primary" /> Racha de aprendizaje</CardTitle><CardDescription className="mt-1"> Tu actividad las últimas 13 semanas</CardDescription></div>
               <span className="text-2xl font-bold text-primary">{dashboard?.streak ?? 0}<span className="ml-1 text-xs font-normal text-muted-foreground">days</span></span>
             </CardHeader>
 
             <CardContent className="pb-4">
               <StreakCalendar activity={dashboard?.studyActivity ?? []} />
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t pt-3 text-xs text-muted-foreground">
-                <span>Every bit of practice counts.</span>
+                <span>Cada pedacito de práctica cuenta.</span>
                 <div className="flex items-center gap-2"><span>Less</span><span className="size-3 rounded-[3px] bg-muted" /><span className="size-3 rounded-[3px] bg-primary/25" /><span className="size-3 rounded-[3px] bg-primary/65" /><span className="size-3 rounded-[3px] bg-primary" /><span>More</span></div>
               </div>
             </CardContent>
@@ -121,15 +121,15 @@ export default function StudentDashboard() {
                 <HeartHandshake className="size-4" />
               </div>
               <div>
-                <h2 className="font-semibold">Support Bright Bytes</h2>
-                <p className="text-sm text-muted-foreground">Help us keep learning free.</p>
+                <h2 className="font-semibold">Apoya a Bright Bytes</h2>
+                <p className="text-sm text-muted-foreground">Ayúdanos a que el aprendizaje siga siendo gratuito.</p>
               </div>
             </div>
             <Link
               href="/student/support"
               className={buttonVariants({ variant: "ghost", size: "sm", className: "-ml-3 text-primary sm:ml-0" })}
             >
-              See how we&apos;re doing <ArrowRight />
+              Ver cómo estamos<ArrowRight />
             </Link>
           </CardContent>
         </Card>

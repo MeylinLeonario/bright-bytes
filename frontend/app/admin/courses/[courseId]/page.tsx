@@ -276,7 +276,7 @@ export default function CoursePage() {
 
           <StatCard
             icon={<BookOpen size={20} />}
-            label="Course progress"
+            label="Progreso del curso"
             value={`${progress}%`}
           />
         </section>

@@ -494,7 +494,7 @@ export default function ProgressPage() {
           <Card>
             <CardHeader className="px-5 pb-3 pt-5">
               <CardTitle className="text-lg">
-                Course progress
+                Progreso del curso
               </CardTitle>
 
               <CardDescription>
