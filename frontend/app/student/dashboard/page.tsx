@@ -1,384 +1,118 @@
 "use client";
 
-import {
-  ArrowRight,
-  BookOpen,
-  CheckCircle2,
-  Circle,
-  Flame,
-  Trophy,
-} from "lucide-react";
-
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { useEffect, useState } from "react";
-import { getCurrentUser, getStudentDashboard } from "@/lib/api";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { buttonVariants } from "@/components/ui/button";
-import type { CurrentUser, StudentDashboardData } from "@/lib/api";
-
+import { ArrowRight, BookOpen, Check, Flame, Pencil, Quote, Sparkles, Target } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { DAILY_QUOTES } from "@/lib/daily-quotes";
+import { getCurrentUser, getStudentDashboard, updateWeeklyGoal, type CurrentUser, type StudentDashboardData } from "@/lib/api";
+import { StreakCalendar } from "./streak-calendar";
 
 export default function StudentDashboard() {
   const [user, setUser] = useState<CurrentUser | null>(null);
-  const [loadingUser, setLoadingUser] = useState(true);
   const [dashboard, setDashboard] = useState<StudentDashboardData | null>(null);
-  const [loadingDashboard, setLoadingDashboard] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [editingGoal, setEditingGoal] = useState(false);
+  const [savingGoal, setSavingGoal] = useState(false);
+  const [quoteIndex, setQuoteIndex] = useState(0);
 
   useEffect(() => {
-    getCurrentUser()
-      .then((data) => {
-        setUser(data);
+    Promise.all([getCurrentUser(), getStudentDashboard()])
+      .then(([currentUser, data]) => {
+        setUser(currentUser);
+        setDashboard(data);
+        setQuoteIndex(Math.floor(Math.random() * DAILY_QUOTES.length));
       })
-      .catch((error) => {
-        console.error("Error loading current user:", error);
-      })
-      .finally(() => {
-        setLoadingUser(false);
-      });
+      .catch((error) => console.error("Error loading dashboard:", error))
+      .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    getStudentDashboard()
-      .then(setDashboard)
-      .catch((error) => {
-        console.error("Error loading student dashboard:", error);
-      })
-      .finally(() => {
-        setLoadingDashboard(false);
-      });
-  }, []);
+  const completedThisWeek = useMemo(
+    () => dashboard?.weeklyGoal.filter((day) => day.completed).length ?? 0,
+    [dashboard]
+  );
+  const goal = dashboard?.weeklyGoalDays ?? 5;
+  const [english, spanish] = DAILY_QUOTES[quoteIndex];
 
-  const formatActivityDate = (completedAt: string) => {
-    const date = new Date(completedAt);
-    const today = new Date();
-
-    const todayOnly = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate()
-    );
-
-    const dateOnly = new Date(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate()
-    );
-
-    const differenceInDays = Math.round(
-      (todayOnly.getTime() - dateOnly.getTime()) / 86400000
-    );
-
-    if (differenceInDays === 0) return "Today";
-    if (differenceInDays === 1) return "Yesterday";
-
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
-  };
+  async function setGoal(days: number) {
+    if (!dashboard) return;
+    setSavingGoal(true);
+    try {
+      await updateWeeklyGoal(days);
+      setDashboard({ ...dashboard, weeklyGoalDays: days });
+      setEditingGoal(false);
+    } catch (error) {
+      console.error("Error updating weekly goal:", error);
+    } finally { setSavingGoal(false); }
+  }
 
   return (
     <main className="min-h-screen bg-muted/30">
-      <div className="mx-auto flex max-w-7xl flex-col gap-5 px-5 py-6 md:px-6">
-        {/* HEADER */}
-        <section>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Student dashboard
-          </p>
+    <div className="mx-auto flex max-w-7xl flex-col gap-5 px-5 py-7 md:px-8 md:py-9">
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Student dashboard</p>
+            <h1 className="mt-2 text-3xl font-bold tracking-tight">Good morning, {loading ? "..." : user?.name?.split(" ")[0] ?? "student"} <span aria-hidden>👋</span></h1>
+            <p className="mt-1 text-sm text-muted-foreground">A little English today can take you somewhere new tomorrow.</p>
+          </div>
+          <Badge variant="secondary" className="w-fit gap-1.5 rounded-full px-3 py-1.5"><Flame className="size-3.5 text-primary" /> {dashboard?.streak ?? 0} day streak</Badge>
+        </header>
 
-          <h1 className="mt-1 text-2xl font-bold tracking-tight">
-            Good morning, {loadingUser ? "..." : user?.name ?? "student"} 👋
-          </h1>
+        <section className="grid gap-4 lg:grid-cols-[1.45fr_.55fr]">
+          <Card className="overflow-hidden border-primary/15 shadow-sm">
+            <CardHeader className="flex-row items-start justify-between gap-4 pb-3">
+              <div><CardDescription className="font-medium">Continue learning</CardDescription><CardTitle className="mt-1 text-2xl">{loading ? "Loading your lesson..." : dashboard?.continueLesson?.title ?? "You’re all caught up!"}</CardTitle></div>
+              <div className="rounded-2xl bg-primary/10 p-3 text-primary"><BookOpen className="size-5" /></div>
+            </CardHeader>
+            <CardContent>
+              {dashboard?.continueLesson ? <>
+                <p className="text-sm text-muted-foreground">Lesson {dashboard.continueLesson.order} · {dashboard.continueLesson.grammarPoint}</p>
+                <div className="mt-5 flex items-center gap-4"><Link href={`/student/lessons/${dashboard.continueLesson.id}`} className={buttonVariants({ className: "gap-2" })}>Continue lesson <ArrowRight /></Link><span className="text-xs text-muted-foreground">Pick up where you left off</span></div>
+              </> : <p className="text-sm text-muted-foreground">Explore your courses and choose your next challenge.</p>}
+            </CardContent>
+          </Card>
+          <Card className="border-chart-2/20 bg-gradient-to-br from-card to-chart-1/10 shadow-sm">
+            <CardHeader className="pb-2"><div className="mb-3 flex size-9 items-center justify-center rounded-full bg-chart-2/10 text-chart-2"><Quote className="size-4" /></div><CardDescription>Phrase of the day</CardDescription><CardTitle className="text-xl leading-snug">“{english}”</CardTitle></CardHeader>
+            <CardContent><p className="text-sm text-muted-foreground">{spanish}</p></CardContent>
+          </Card>
+        </section>
+        <section className="grid gap-4 lg:grid-cols-[1.45fr_.55fr]">
+          <Card className="shadow-sm">
+            <CardHeader className="flex-row items-start justify-between pb-3">
+              <div><CardTitle className="flex items-center gap-2 text-lg"><Flame className="size-5 text-primary" /> Learning streak</CardTitle><CardDescription className="mt-1">Your study activity over the last 13 weeks</CardDescription></div>
+              <span className="text-2xl font-bold text-primary">{dashboard?.streak ?? 0}<span className="ml-1 text-xs font-normal text-muted-foreground">days</span></span>
+            </CardHeader>
 
-          <p className="mt-1 text-sm text-muted-foreground">
-            Ready for another Bright Byte?
-          </p>
+            <CardContent>
+              <StreakCalendar activity={dashboard?.studyActivity ?? []} />
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-xs text-muted-foreground">
+                <span>Every bit of practice counts.</span>
+                <div className="flex items-center gap-2"><span>Less</span><span className="size-3 rounded-[3px] bg-muted" /><span className="size-3 rounded-[3px] bg-primary/25" /><span className="size-3 rounded-[3px] bg-primary/65" /><span className="size-3 rounded-[3px] bg-primary" /><span>More</span></div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm">
+            <CardHeader className="flex-row items-start justify-between pb-3"><div><CardDescription>Weekly goal</CardDescription><CardTitle className="mt-1 text-xl">{completedThisWeek} / {goal} days completed</CardTitle></div><Target className="size-5 text-chart-2" /></CardHeader>
+            <CardContent>
+              <Progress value={Math.min(100, (completedThisWeek / goal) * 100)} className="h-2" />
+              <div className="mt-4 flex justify-between gap-1">{(dashboard?.weeklyGoal ?? []).slice(0, 7).map((day) => <div key={day.day} className="flex flex-col items-center gap-2"><div className={`flex size-8 items-center justify-center rounded-full text-xs ${day.completed ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>{day.completed ? <Check className="size-4" /> : day.day.slice(0, 1)}</div></div>)}</div>
+              {editingGoal ? <div className="mt-5 flex flex-wrap gap-1.5" aria-label="Choose weekly goal">{[2,3,4,5,6,7].map((days) => <Button key={days} size="xs" variant={days === goal ? "default" : "outline"} disabled={savingGoal} onClick={() => setGoal(days)}>{days} days</Button>)}</div> : <Button variant="ghost" size="sm" className="mt-4 -ml-3 text-muted-foreground" onClick={() => setEditingGoal(true)}><Pencil /> Edit goal</Button>}
+            </CardContent>
+          </Card>
         </section>
 
-        {/* STATS */}
         <section className="grid gap-4 md:grid-cols-3">
-          {/* STREAK */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-1 pt-4">
-              <CardTitle className="text-sm font-medium">Streak</CardTitle>
-
-              <Flame className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-
-            <CardContent className="px-5 pb-4">
-              <div className="text-2xl font-bold">
-                {loadingDashboard
-                  ? "..."
-                  : `${dashboard?.streak ?? 0} ${
-                      dashboard?.streak === 1 ? "day" : "days"
-                    }`}
-              </div>
-
-              <p className="mt-1 text-xs text-muted-foreground">
-                Keep your streak alive
-              </p>
+          <Card className="md:col-span-2 overflow-hidden border-primary/20 bg-foreground text-background shadow-sm">
+            <CardContent className="flex flex-col items-start justify-between gap-5 p-6 sm:flex-row sm:items-center">
+              <div className="flex gap-4"><div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground"><Sparkles className="size-5" /></div><div><p className="text-xs font-semibold uppercase tracking-[.15em] text-background/60">Quick review · 1–2 min</p><h2 className="mt-1 text-xl font-semibold">Make yesterday’s words stick.</h2><p className="mt-1 text-sm text-background/65">Choose a completed lesson and flip through its vocabulary.</p></div></div>
+              <Link href="/student/review" className={buttonVariants({ className: "shrink-0 bg-chart-2 text-white hover:bg-chart-2/80" })}>Start review <ArrowRight /></Link>
             </CardContent>
           </Card>
-
-          {/* LESSONS */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-1 pt-4">
-              <CardTitle className="text-sm font-medium">
-                Lessons completed
-              </CardTitle>
-
-              <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-
-            <CardContent className="px-5 pb-4">
-              <div className="text-2xl font-bold">
-                {loadingDashboard ? "..." : dashboard?.lessonsCompleted ?? 0}
-              </div>
-
-              <p className="mt-1 text-xs text-muted-foreground">
-                Across your courses
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* WORDS */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-1 pt-4">
-              <CardTitle className="text-sm font-medium">
-                Words learned
-              </CardTitle>
-
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-
-            <CardContent className="px-5 pb-4">
-              <div className="text-2xl font-bold">
-                {loadingDashboard ? "..." : dashboard?.wordsLearned ?? 0}
-              </div>
-
-              <p className="mt-1 text-xs text-muted-foreground">
-                Vocabulary practiced
-              </p>
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* CONTINUE LEARNING */}
-        <section>
-          <Card>
-            <CardContent className="p-5">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex-1">
-                  <Badge variant="secondary">Continue learning</Badge>
-
-                  {loadingDashboard ? (
-                    <p className="mt-3 text-sm text-muted-foreground">
-                      Loading your next lesson...
-                    </p>
-                  ) : dashboard?.continueLesson ? (
-                    <>
-                      <p className="mt-3 text-xs text-muted-foreground">
-                        Lesson {dashboard.continueLesson.order}
-                      </p>
-
-                      <h2 className="mt-1 text-xl font-semibold">
-                        {dashboard.continueLesson.title}
-                      </h2>
-
-                      <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                        Grammar focus: {dashboard.continueLesson.grammarPoint}
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <h2 className="mt-3 text-xl font-semibold">
-                        Course complete
-                      </h2>
-
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        You have completed every published lesson in this course.
-                      </p>
-                    </>
-                  )}
-                </div>
-                {dashboard?.continueLesson && <Link className={buttonVariants({ className: "gap-2 lg:self-end" })} href={`/student/lessons/${dashboard.continueLesson.id}`}>
-                  Continue <ArrowRight className="h-4 w-4" />
-                </Link>}
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* COURSE + WEEKLY GOAL */}
-        <section className="grid gap-4 lg:grid-cols-3">
-          {/* CURRENT COURSE */}
-          <Card className="lg:col-span-2">
-            <CardHeader className="px-5 pb-3 pt-5">
-              <CardDescription>Your current course</CardDescription>
-
-              <CardTitle className="text-xl">
-                {loadingDashboard
-                  ? "Loading course..."
-                  : dashboard?.courseTitle || "English A2"}
-              </CardTitle>
-            </CardHeader>
-
-            <CardContent className="px-5 pb-5">
-              <div className="space-y-4">
-                <div>
-                  <div className="mb-1.5 flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">
-                      {loadingDashboard
-                        ? "Loading progress..."
-                        : `${dashboard?.courseLessonsCompleted ?? 0} of ${
-                            dashboard?.totalCourseLessons ?? 0
-                          } lessons completed`}
-                    </span>
-
-                    <span className="font-medium">
-                      {loadingDashboard
-                        ? "..."
-                        : `${dashboard?.courseProgress ?? 0}%`}
-                    </span>
-                  </div>
-
-                  <Progress value={dashboard?.courseProgress ?? 0} />
-                </div>
-
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-medium">
-                      {loadingDashboard
-                        ? "Loading..."
-                        : `${dashboard?.lessonsRemaining ?? 0} lessons remaining`}
-                    </p>
-
-                    <p className="text-xs text-muted-foreground">
-                      Keep going — you are making progress.
-                    </p>
-                  </div>
-                  <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/student/courses">View course</Link>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* WEEKLY GOAL */}
-          <Card>
-            <CardHeader className="px-5 pb-3 pt-5">
-              <CardDescription>Weekly goal</CardDescription>
-
-              <CardTitle className="text-xl">
-                {loadingDashboard
-                  ? "..."
-                  : `${
-                      dashboard?.weeklyGoal.filter((day) => day.completed)
-                        .length ?? 0
-                    } / ${dashboard?.weeklyGoal.length ?? 5} days`}
-              </CardTitle>
-            </CardHeader>
-
-            <CardContent className="space-y-2 px-5 pb-5">
-              {(dashboard?.weeklyGoal ?? []).map((item) => (
-                <div
-                  key={item.day}
-                  className="flex items-center justify-between rounded-lg border px-3 py-2"
-                >
-                  <span className="text-sm font-medium">{item.day}</span>
-
-                  {item.completed ? (
-                    <CheckCircle2 className="h-5 w-5" />
-                  ) : (
-                    <Circle className="h-5 w-5 text-muted-foreground" />
-                  )}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* RECENT ACTIVITY + ACHIEVEMENT */}
-        <section className="grid gap-4 lg:grid-cols-3">
-          {/* RECENT ACTIVITY */}
-          <Card className="lg:col-span-2">
-            <CardHeader className="px-5 pb-3 pt-5">
-              <CardTitle className="text-lg">Recent activity</CardTitle>
-
-              <CardDescription>
-                Your most recently completed lessons
-              </CardDescription>
-            </CardHeader>
-
-            <CardContent className="space-y-2 px-5 pb-5">
-              {(dashboard?.recentActivity ?? []).map((activity) => (
-                <div
-                  key={activity.lessonId}
-                  className="flex items-center justify-between rounded-lg border px-4 py-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
-                      <CheckCircle2 className="h-4 w-4" />
-                    </div>
-
-                    <div>
-                      <p className="text-sm font-medium">
-                        {activity.lessonTitle}
-                      </p>
-
-                      <p className="text-xs text-muted-foreground">
-                        Lesson completed
-                      </p>
-                    </div>
-                  </div>
-
-                  <span className="text-xs text-muted-foreground">
-                    {formatActivityDate(activity.completedAt)}
-                  </span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          {/* ACHIEVEMENT */}
-          <Card>
-            <CardHeader className="px-5 pb-2 pt-5">
-              <CardDescription>Latest achievement</CardDescription>
-
-              <CardTitle className="text-xl">
-                {loadingDashboard
-                  ? "..."
-                  : dashboard?.latestAchievement?.title ?? "Keep going"}
-              </CardTitle>
-            </CardHeader>
-
-            <CardContent className="px-5 pb-5">
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
-                  <Trophy className="h-6 w-6" />
-                </div>
-
-                <div>
-                  <p className="text-sm font-medium">
-                    {dashboard?.latestAchievement
-                      ? "Consistency champion"
-                      : "Your next achievement is waiting"}
-                  </p>
-
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {dashboard?.latestAchievement?.description ??
-                      "Study on consecutive days to unlock a streak achievement."}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <Card className="shadow-sm"><CardHeader className="pb-2"><CardDescription>Course progress</CardDescription><CardTitle className="text-xl">{dashboard?.courseTitle ?? "English"}</CardTitle></CardHeader><CardContent><div className="mb-2 flex justify-between text-xs text-muted-foreground"><span>{dashboard?.courseLessonsCompleted ?? 0} of {dashboard?.totalCourseLessons ?? 0} lessons</span><span className="font-semibold text-foreground">{dashboard?.courseProgress ?? 0}%</span></div><Progress value={dashboard?.courseProgress ?? 0} /><Link href="/student/courses" className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary">View course <ArrowRight className="size-3.5" /></Link></CardContent></Card>
         </section>
       </div>
     </main>

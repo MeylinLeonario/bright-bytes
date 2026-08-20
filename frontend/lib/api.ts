@@ -43,6 +43,8 @@ export interface StudentDashboardData {
   lessonsRemaining: number;
   continueLesson: ContinueLesson | null;
   weeklyGoal: WeeklyStudyDay[];
+  weeklyGoalDays: number;
+  studyActivity: Array<{ date: string; intensity: number }>;
   recentActivity: RecentActivity[];
   latestAchievement: Achievement | null;
 }
@@ -54,6 +56,14 @@ export interface StudentCourse {
   level: string;
   enrolled: boolean;
   lessons: Array<{ id: string; title: string; grammarPoint: string; order: number; completed: boolean }>;
+}
+
+export interface ReviewLesson {
+  id: string;
+  title: string;
+  order: number;
+  courseTitle: string;
+  vocabulary: Array<{ id: string; word: string; meaning: string; example: string }>;
 }
 
 export interface StudentLesson {
@@ -182,4 +192,15 @@ export function correctStudentSpeakingExercise(lessonId: string, audio: Blob, du
     method: "POST",
     body: form,
   });
+}
+
+export function updateWeeklyGoal(days: number) {
+  return apiFetch<{ days: number }>("/api/student/weekly-goal", {
+    method: "PUT",
+    body: JSON.stringify({ days }),
+  });
+}
+
+export function getReviewLessons() {
+  return apiFetch<ReviewLesson[]>("/api/student/review-lessons");
 }

@@ -87,6 +87,7 @@ public class StudentController : ControllerBase
             .FirstOrDefaultAsync(cancellationToken);
         if (lesson is null) return NotFound(new { message = "Lesson not found or you are not enrolled in its course." });
 
+        await RecordStudyActivity(userId, lessonId, visitedLesson: true);
         var attemptsUsed = await _context.ExerciseCorrections.CountAsync(correction =>
             correction.UserId == userId && correction.LessonId == lessonId &&
             correction.ExerciseType == "speaking", cancellationToken);
@@ -113,6 +114,8 @@ public class StudentController : ControllerBase
         {
             return Conflict(new { message = "Another correction was submitted at the same time. Please refresh the lesson." });
         }
+
+        await RecordStudyActivity(userId, lessonId, visitedLesson: true, practicedSpeaking: true);
 
         var user = await _context.Users.AsNoTracking().Where(item => item.Id == userId)
             .Select(item => new { item.Name, item.Email }).SingleAsync(cancellationToken);
@@ -190,6 +193,8 @@ public class StudentController : ControllerBase
 
         if (lesson is null) return NotFound(new { message = "Lesson not found or you are not enrolled in its course." });
 
+        await RecordStudyActivity(userId, lessonId, visitedLesson: true);
+
         var lessonIds = await _context.Lessons
             .Where(item => item.CourseId == lesson.CourseId && item.IsPublished)
             .OrderBy(item => item.Order)
@@ -263,6 +268,12 @@ public class StudentController : ControllerBase
             return Conflict(new { message = "Another correction was submitted at the same time. Please refresh the lesson." });
         }
 
+        await RecordStudyActivity(
+            userId,
+            lessonId,
+            practicedWriting: exerciseType == "writing",
+            practicedSpeaking: exerciseType == "speaking");
+
         var user = await _context.Users.AsNoTracking().Where(item => item.Id == userId)
             .Select(item => new { item.Name, item.Email }).SingleAsync(cancellationToken);
         correction.SyncedToGoogleSheets = await _correctionService.AppendToGoogleSheetsAsync(new
@@ -279,6 +290,41 @@ public class StudentController : ControllerBase
             AttemptsRemaining = 2 - correction.AttemptNumber,
             correction.SyncedToGoogleSheets
         });
+    }
+
+    [HttpPut("weekly-goal")]
+    public async Task<IActionResult> UpdateWeeklyGoal([FromBody] UpdateWeeklyGoalDTO dto)
+    {
+        if (!TryGetUserId(out var userId)) return Unauthorized();
+        if (dto.Days is < 1 or > 7) return BadRequest(new { message = "Weekly goal must be between 1 and 7 days." });
+
+        var user = await _context.Users.FindAsync(userId);
+        if (user is null) return NotFound();
+        user.WeeklyGoalDays = dto.Days;
+        await _context.SaveChangesAsync();
+        return Ok(new { days = user.WeeklyGoalDays });
+    }
+
+    [HttpGet("review-lessons")]
+    public async Task<IActionResult> GetReviewLessons()
+    {
+        if (!TryGetUserId(out var userId)) return Unauthorized();
+
+        var lessons = await _context.Lessons.AsNoTracking()
+            .Where(lesson => lesson.IsPublished && lesson.Course.IsPublished &&
+                lesson.Course.Enrollments.Any(enrollment => enrollment.UserId == userId) &&
+                _context.UserProgress.Any(progress => progress.UserId == userId &&
+                    progress.LessonId == lesson.Id && progress.Completed) &&
+                lesson.Vocabulary.Any())
+            .OrderBy(lesson => lesson.Course.Title).ThenBy(lesson => lesson.Order)
+            .Select(lesson => new
+            {
+                lesson.Id, lesson.Title, lesson.Order, CourseTitle = lesson.Course.Title,
+                Vocabulary = lesson.Vocabulary.OrderBy(item => item.Word).Select(item => new
+                { item.Id, item.Word, item.Meaning, item.Example }).ToList()
+            }).ToListAsync();
+
+        return Ok(lessons);
     }
 
     [HttpPost("lessons/{lessonId:guid}/complete")]
@@ -467,17 +513,39 @@ public class StudentController : ControllerBase
 
         var today = DateTime.UtcNow.Date;
 
+        var userWeeklyGoalDays = await _context.Users.AsNoTracking()
+            .Where(user => user.Id == userId)
+            .Select(user => user.WeeklyGoalDays)
+            .SingleAsync();
+
+        var activityStart = today.AddDays(-83);
+        var activityRows = await _context.StudyActivities.AsNoTracking()
+            .Where(activity => activity.UserId == userId && activity.ActivityDate >= activityStart)
+            .ToListAsync();
+        var studyActivity = activityRows
+            .GroupBy(activity => activity.ActivityDate.Date)
+            .Select(group => new StudyActivityDayDTO
+            {
+                Date = group.Key,
+                Intensity = group.Any(item => item.PracticedWriting) && group.Any(item => item.PracticedSpeaking)
+                    ? 3
+                    : group.Any(item => item.PracticedWriting || item.PracticedSpeaking) ? 2 : 1
+            })
+            .OrderBy(item => item.Date)
+            .ToList();
+
+
         var monday = today.AddDays(
             -(((int)today.DayOfWeek + 6) % 7)
         );
 
         var weeklyGoal = new List<WeeklyStudyDayDTO>();
 
-        for (var i = 0; i < 5; i++)
+        for (var i = 0; i < 7; i++)
         {
             var date = monday.AddDays(i);
 
-            var studied = completedDates.Contains(date);
+            var studied = studyActivity.Any(activity => activity.Date == date);
 
             weeklyGoal.Add(new WeeklyStudyDayDTO
             {
@@ -578,6 +646,8 @@ public class StudentController : ControllerBase
             ContinueLesson = continueLesson,
 
             WeeklyGoal = weeklyGoal,
+            WeeklyGoalDays = userWeeklyGoalDays,
+            StudyActivity = studyActivity,
 
             RecentActivity = recentActivity,
 
@@ -588,6 +658,30 @@ public class StudentController : ControllerBase
         return Ok(dashboard);
     }
 
+    private async Task RecordStudyActivity(
+        Guid userId,
+        Guid lessonId,
+        bool visitedLesson = false,
+        bool practicedWriting = false,
+        bool practicedSpeaking = false)
+    {
+        var today = DateTime.UtcNow.Date;
+        var activity = await _context.StudyActivities.FirstOrDefaultAsync(item =>
+            item.UserId == userId && item.LessonId == lessonId && item.ActivityDate == today);
+        if (activity is null)
+        {
+            activity = new StudyActivity
+            {
+                Id = Guid.NewGuid(), UserId = userId, LessonId = lessonId, ActivityDate = today
+            };
+            _context.StudyActivities.Add(activity);
+        }
+        activity.VisitedLesson |= visitedLesson;
+        activity.PracticedWriting |= practicedWriting;
+        activity.PracticedSpeaking |= practicedSpeaking;
+        await _context.SaveChangesAsync();
+    }
+    
     private static int CalculateStreak(List<DateTime> completedDates)
     {
         if (completedDates.Count == 0)

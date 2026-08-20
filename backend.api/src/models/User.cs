@@ -23,6 +23,7 @@ namespace backend.api.src.models
 
     public DateTime? LastActiveAt { get; set; }
 
+    public int WeeklyGoalDays { get; set; } = 5;
     public List<CourseEnrollment> CourseEnrollments { get; set; } = [];
 }
 }

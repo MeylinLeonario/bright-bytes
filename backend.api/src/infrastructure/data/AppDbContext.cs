@@ -26,6 +26,10 @@ public class AppDbContext : DbContext
                 correction.AttemptNumber
             })
             .IsUnique();
+
+        modelBuilder.Entity<StudyActivity>()
+            .HasIndex(activity => new { activity.UserId, activity.LessonId, activity.ActivityDate })
+            .IsUnique();
     }
     public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options)
@@ -40,4 +44,5 @@ public class AppDbContext : DbContext
     public DbSet<UserProgress> UserProgress => Set<UserProgress>();
     public DbSet<CourseEnrollment> CourseEnrollments => Set<CourseEnrollment>();
     public DbSet<ExerciseCorrection> ExerciseCorrections => Set<ExerciseCorrection>();
+    public DbSet<StudyActivity> StudyActivities => Set<StudyActivity>();
 }

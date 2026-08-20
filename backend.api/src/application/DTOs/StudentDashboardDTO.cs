@@ -27,6 +27,20 @@ public class StudentDashboardDTO
     public List<RecentActivityDTO> RecentActivity { get; set; } = [];
 
     public AchievementDTO? LatestAchievement { get; set; }
+    public int WeeklyGoalDays { get; set; } = 5;
+
+    public List<StudyActivityDayDTO> StudyActivity { get; set; } = [];
+}
+
+public class StudyActivityDayDTO
+{
+    public DateTime Date { get; set; }
+    public int Intensity { get; set; }
+}
+
+public class UpdateWeeklyGoalDTO
+{
+    public int Days { get; set; }
 }
 
 public class ContinueLessonDTO
