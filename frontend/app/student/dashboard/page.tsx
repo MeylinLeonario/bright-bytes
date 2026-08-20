@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, BookOpen, Check, Flame, Pencil, Quote, Sparkles, Target } from "lucide-react";
+import { ArrowRight, BookOpen, Check, Flame, HeartHandshake, Pencil, Quote, Sparkles, Target } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -114,6 +114,25 @@ export default function StudentDashboard() {
               </CardContent>
           </Card>
           </section>
+          <Card size="sm" className="border-dashed bg-card/70 shadow-none">
+          <CardContent className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <HeartHandshake className="size-4" />
+              </div>
+              <div>
+                <h2 className="font-semibold">Support Bright Bytes</h2>
+                <p className="text-sm text-muted-foreground">Help us keep learning free.</p>
+              </div>
+            </div>
+            <Link
+              href="/student/support"
+              className={buttonVariants({ variant: "ghost", size: "sm", className: "-ml-3 text-primary sm:ml-0" })}
+            >
+              See how we&apos;re doing <ArrowRight />
+            </Link>
+          </CardContent>
+        </Card>
       </div>
     </main>
   );
