@@ -10,6 +10,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { MiniTranslator } from "./mini-translator";
 
 import { completeStudentLesson, correctStudentExercise, correctStudentSpeakingExercise, getStudentLesson, type ExerciseCorrection, type StudentLesson } from "@/lib/api";
 
@@ -161,6 +162,7 @@ export default function LessonPage() {
     </section>
     <Card><CardHeader><CardTitle className="flex items-center gap-2"><Sparkles /> Grammar point</CardTitle><CardDescription>{lesson.grammarPoint}</CardDescription></CardHeader><CardContent><div className="whitespace-pre-line text-sm leading-7 text-muted-foreground">{lesson.grammarExplanation}</div></CardContent></Card>
     <Card><CardHeader><CardTitle className="flex items-center gap-2"><BookOpen /> Vocabulary</CardTitle><CardDescription>{lesson.vocabulary.length} useful words for this lesson</CardDescription></CardHeader><CardContent><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{lesson.vocabulary.map(item => <div key={item.id} className="rounded-xl border p-4"><div className="flex justify-between"><strong>{item.word}</strong>{item.audioUrl && <Button aria-label={`Play ${item.word}`} variant="ghost" size="icon-sm" onClick={() => playAudio(item.audioUrl)}><Volume2 /></Button>}</div><p className="text-xs text-muted-foreground">{item.meaning}</p><Separator className="my-3"/><p className="text-xs leading-5">{item.example}</p></div>)}</div></CardContent></Card>
+    <MiniTranslator />
     <Card><CardHeader><CardTitle className="flex items-center gap-2"><BookOpen /> Read & listen</CardTitle></CardHeader><CardContent className="space-y-4">{lesson.readings.map((reading, index) => <div key={reading.id} className="rounded-xl border p-5"><div className="flex justify-between"><div><p className="text-xs text-muted-foreground">READING {index + 1}</p><h3 className="font-semibold">{reading.title}</h3></div>{reading.audioUrl && <Button variant="outline" size="sm" onClick={() => playAudio(reading.audioUrl)}><Play /> Listen</Button>}</div><p className="mt-4 whitespace-pre-line text-sm leading-7 text-muted-foreground">{reading.text}</p></div>)}</CardContent></Card>
     <WritingPractice prompt={lesson.writingPrompt} initialAttempts={lesson.writingAttemptsUsed} />
     <SpeakingPractice prompt={lesson.speakingPrompt} initialAttempts={lesson.speakingAttemptsUsed} />
