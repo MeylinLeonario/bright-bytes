@@ -102,6 +102,7 @@ namespace backend.api.src.api.controllers
                     course.Description,
                     course.Level,
                     course.IsPublished,
+                    StudentCount = course.Enrollments.Count,
                     Lessons = course.Lessons
                         .OrderBy(lesson => lesson.Order)
                         .Select(lesson => new

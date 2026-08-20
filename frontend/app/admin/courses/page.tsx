@@ -49,6 +49,7 @@ export default function AdminCoursesPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
+
   const [newCourse, setNewCourse] = useState({
     title: "Everyday English",
     description:
@@ -92,7 +93,9 @@ export default function AdminCoursesPage() {
     );
   });
 
-  const handleCreateCourse = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleCreateCourse = async (
+    event: React.FormEvent<HTMLFormElement>
+  ) => {
     event.preventDefault();
     setCreating(true);
     setCreateError("");
@@ -103,24 +106,29 @@ export default function AdminCoursesPage() {
         body: JSON.stringify(newCourse),
       });
 
-      setCourses([{
-        id: course.id,
-        level: course.level,
-        title: course.title,
-        description: course.description,
-        lessons: course.lessonCount,
-        students: 0,
-        status: course.isPublished ? "Published" : "In progress",
-      }]);
+      setCourses([
+        {
+          id: course.id,
+          level: course.level,
+          title: course.title,
+          description: course.description,
+          lessons: course.lessonCount,
+          students: 0,
+          status: course.isPublished ? "Published" : "In progress",
+        },
+      ]);
+
       setShowCreateForm(false);
     } catch (err) {
       console.error(err);
-      setCreateError("No pudimos crear el curso A2. Inténtalo de nuevo.");
+      setCreateError(
+        "No pudimos crear el curso A2. Inténtalo de nuevo."
+      );
     } finally {
       setCreating(false);
     }
   };
-  
+
   const handleDelete = (id: string) => {
     const confirmed = window.confirm(
       "Are you sure you want to delete this course?"
@@ -134,8 +142,10 @@ export default function AdminCoursesPage() {
 
     setOpenMenu(null);
   };
+
   const handlePublicationChange = async (course: Course) => {
     const isPublished = course.status !== "Published";
+
     setUpdatingCourseId(course.id);
 
     try {
@@ -143,17 +153,25 @@ export default function AdminCoursesPage() {
         method: "PATCH",
         body: JSON.stringify({ isPublished }),
       });
+
       setCourses((currentCourses) =>
         currentCourses.map((currentCourse) =>
           currentCourse.id === course.id
-            ? { ...currentCourse, status: isPublished ? "Published" : "In progress" }
+            ? {
+                ...currentCourse,
+                status: isPublished ? "Published" : "In progress",
+              }
             : currentCourse
         )
       );
+
       setOpenMenu(null);
     } catch (err) {
       console.error(err);
-      window.alert("No pudimos actualizar la publicación del curso. Inténtalo de nuevo.");
+
+      window.alert(
+        "No pudimos actualizar la publicación del curso. Inténtalo de nuevo."
+      );
     } finally {
       setUpdatingCourseId(null);
     }
@@ -161,8 +179,8 @@ export default function AdminCoursesPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#faf9f7] px-6 py-8 md:px-10 lg:px-14">
-        <div className="mx-auto max-w-7xl text-sm font-medium text-slate-500">
+      <main className="min-h-screen bg-background px-6 py-8 md:px-10 lg:px-14">
+        <div className="mx-auto max-w-7xl text-sm font-medium text-muted-foreground">
           Loading courses...
         </div>
       </main>
@@ -171,8 +189,8 @@ export default function AdminCoursesPage() {
 
   if (error) {
     return (
-      <main className="min-h-screen bg-[#faf9f7] px-6 py-8 md:px-10 lg:px-14">
-        <div className="mx-auto max-w-7xl rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+      <main className="min-h-screen bg-background px-6 py-8 md:px-10 lg:px-14">
+        <div className="mx-auto max-w-7xl rounded-2xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
           {error}
         </div>
       </main>
@@ -180,20 +198,22 @@ export default function AdminCoursesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#faf9f7] px-6 py-8 md:px-10 lg:px-14">
+    <main className="min-h-screen bg-background px-6 py-8 md:px-10 lg:px-14">
       <div className="mx-auto max-w-7xl">
+
+        {/* HEADER */}
         <section className="mb-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div>
-            <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-purple-600">
+            <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-primary">
               <BookOpen size={17} />
               Admin workspace
             </div>
 
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
+            <h1 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">
               Courses
             </h1>
 
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 md:text-base">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
               Create, organize and manage every Bright English course from one
               place.
             </p>
@@ -202,7 +222,7 @@ export default function AdminCoursesPage() {
           {courses.length === 0 ? (
             <button
               onClick={() => setShowCreateForm(true)}
-              className="flex w-fit items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800"
+              className="flex w-fit items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:-translate-y-0.5 hover:bg-primary/90"
             >
               <Plus size={18} />
               Crear curso A2
@@ -210,7 +230,7 @@ export default function AdminCoursesPage() {
           ) : (
             <Link
               href={`/admin/courses/${courses[0].id}`}
-              className="flex w-fit items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800"
+              className="flex w-fit items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:-translate-y-0.5 hover:bg-primary/90"
             >
               <BookOpen size={18} />
               Entrar al curso A2
@@ -218,6 +238,7 @@ export default function AdminCoursesPage() {
           )}
         </section>
 
+        {/* STATS */}
         <section className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             label="Total courses"
@@ -250,11 +271,12 @@ export default function AdminCoursesPage() {
           />
         </section>
 
-        <section className="mb-6 flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+        {/* SEARCH */}
+        <section className="mb-6 flex flex-col gap-3 rounded-3xl border border-border bg-card p-4 shadow-sm md:flex-row md:items-center md:justify-between">
           <div className="relative w-full md:max-w-sm">
             <Search
               size={18}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
             />
 
             <input
@@ -262,18 +284,19 @@ export default function AdminCoursesPage() {
               placeholder="Search courses..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm text-slate-800 outline-none transition focus:border-purple-300 focus:bg-white focus:ring-4 focus:ring-purple-100"
+              className="w-full rounded-2xl border border-input bg-muted py-3 pl-11 pr-4 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-ring focus:bg-background focus:ring-4 focus:ring-ring/20"
             />
           </div>
 
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-muted-foreground">
             {filteredCourses.length}{" "}
             {filteredCourses.length === 1 ? "course" : "courses"}
           </p>
         </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white shadow-sm">
-          <div className="hidden grid-cols-[1.5fr_100px_120px_130px_130px_70px] gap-4 border-b border-slate-100 bg-slate-50/70 px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400 lg:grid">
+        {/* COURSES TABLE */}
+        <section className="rounded-3xl border border-border bg-card shadow-sm">
+          <div className="hidden grid-cols-[1.5fr_100px_120px_130px_130px_70px] gap-4 border-b border-border bg-muted/60 px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground lg:grid">
             <span>Course</span>
             <span>Level</span>
             <span>Lessons</span>
@@ -298,89 +321,125 @@ export default function AdminCoursesPage() {
 
           {filteredCourses.length === 0 && (
             <div className="flex flex-col items-center px-6 py-20 text-center">
-              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-50 text-purple-500">
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                 <Search size={24} />
               </div>
 
-              <h2 className="font-semibold text-slate-800">
+              <h2 className="font-semibold text-foreground">
                 No courses found
               </h2>
 
-              <p className="mt-1 text-sm text-slate-400">
+              <p className="mt-1 text-sm text-muted-foreground">
                 Try searching by course name or CEFR level.
               </p>
             </div>
           )}
         </section>
       </div>
-       {showCreateForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-5">
+
+      {/* CREATE COURSE MODAL */}
+      {showCreateForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-5">
           <form
             onSubmit={handleCreateCourse}
-            className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl md:p-8"
+            className="w-full max-w-lg rounded-3xl border border-border bg-popover p-6 text-popover-foreground shadow-2xl md:p-8"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <span className="inline-flex rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-700">
+                <span className="inline-flex rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
                   Nivel A2
                 </span>
-                <h2 className="mt-3 text-2xl font-bold text-slate-900">Crear el curso A2</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-500">
-                  Por ahora Bright Bytes tendrá únicamente este curso. Después podrás entrar y agregar sus lecciones.
+
+                <h2 className="mt-3 text-2xl font-bold text-popover-foreground">
+                  Crear el curso A2
+                </h2>
+
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Por ahora Bright Bytes tendrá únicamente este curso.
+                  Después podrás entrar y agregar sus lecciones.
                 </p>
               </div>
+
               <button
                 type="button"
                 aria-label="Cerrar"
                 onClick={() => setShowCreateForm(false)}
-                className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                className="rounded-xl p-2 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <label className="mt-6 block text-sm font-semibold text-slate-700">
+            <label className="mt-6 block text-sm font-semibold text-foreground">
               Nombre del curso
+
               <input
                 required
                 maxLength={120}
                 value={newCourse.title}
-                onChange={(event) => setNewCourse((course) => ({ ...course, title: event.target.value }))}
-                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-purple-300 focus:ring-4 focus:ring-purple-100"
+                onChange={(event) =>
+                  setNewCourse((course) => ({
+                    ...course,
+                    title: event.target.value,
+                  }))
+                }
+                className="mt-2 w-full rounded-2xl border border-input bg-background px-4 py-3 text-foreground outline-none transition focus:border-ring focus:ring-4 focus:ring-ring/20"
               />
             </label>
 
-            <label className="mt-5 block text-sm font-semibold text-slate-700">
+            <label className="mt-5 block text-sm font-semibold text-foreground">
               Descripción
+
               <textarea
                 required
                 maxLength={500}
                 rows={4}
                 value={newCourse.description}
-                onChange={(event) => setNewCourse((course) => ({ ...course, description: event.target.value }))}
-                className="mt-2 w-full resize-none rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-purple-300 focus:ring-4 focus:ring-purple-100"
+                onChange={(event) =>
+                  setNewCourse((course) => ({
+                    ...course,
+                    description: event.target.value,
+                  }))
+                }
+                className="mt-2 w-full resize-none rounded-2xl border border-input bg-background px-4 py-3 text-foreground outline-none transition focus:border-ring focus:ring-4 focus:ring-ring/20"
               />
             </label>
 
-            <label className="mt-5 flex items-center gap-3 text-sm font-medium text-slate-600">
+            <label className="mt-5 flex items-center gap-3 text-sm font-medium text-muted-foreground">
               <input
                 type="checkbox"
                 checked={newCourse.isPublished}
-                onChange={(event) => setNewCourse((course) => ({ ...course, isPublished: event.target.checked }))}
-                className="h-4 w-4 accent-purple-600"
+                onChange={(event) =>
+                  setNewCourse((course) => ({
+                    ...course,
+                    isPublished: event.target.checked,
+                  }))
+                }
+                className="h-4 w-4 accent-primary"
               />
+
               Publicar el curso al crearlo
             </label>
 
             {createError && (
-              <p className="mt-5 rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600">{createError}</p>
+              <p className="mt-5 rounded-2xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+                {createError}
+              </p>
             )}
 
             <div className="mt-7 flex justify-end gap-3">
-              <button type="button" onClick={() => setShowCreateForm(false)} className="rounded-2xl px-5 py-3 text-sm font-semibold text-slate-500 hover:bg-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowCreateForm(false)}
+                className="rounded-2xl px-5 py-3 text-sm font-semibold text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+              >
                 Cancelar
               </button>
-              <button disabled={creating} className="rounded-2xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-700 disabled:opacity-60">
+
+              <button
+                disabled={creating}
+                className="rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
+              >
                 {creating ? "Creando..." : "Crear curso A2"}
               </button>
             </div>
@@ -407,21 +466,22 @@ function CourseRow({
   isUpdating: boolean;
 }) {
   return (
-    <article className="relative border-b border-slate-100 p-5 transition last:border-b-0 hover:bg-slate-50/70 lg:grid lg:grid-cols-[1.5fr_100px_120px_130px_130px_70px] lg:items-center lg:gap-4 lg:px-6">
+    <article className="relative border-b border-border p-5 transition last:border-b-0 hover:bg-accent/50 lg:grid lg:grid-cols-[1.5fr_100px_120px_130px_130px_70px] lg:items-center lg:gap-4 lg:px-6">
+
       <div className="flex gap-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-purple-100 font-bold text-purple-600">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 font-bold text-primary">
           {course.level}
         </div>
 
         <div>
           <Link
             href={`/admin/courses/${course.id}`}
-            className="font-bold text-slate-900 transition hover:text-purple-600"
+            className="font-bold text-card-foreground transition hover:text-primary"
           >
             {course.title}
           </Link>
 
-          <p className="mt-1 max-w-lg text-sm leading-5 text-slate-400">
+          <p className="mt-1 max-w-lg text-sm leading-5 text-muted-foreground">
             {course.description}
           </p>
         </div>
@@ -429,21 +489,26 @@ function CourseRow({
 
       <div className="mt-5 lg:mt-0">
         <MobileLabel>Level</MobileLabel>
-        <span className="font-semibold text-slate-700">{course.level}</span>
+
+        <span className="font-semibold text-foreground">
+          {course.level}
+        </span>
       </div>
 
       <div className="mt-4 lg:mt-0">
         <MobileLabel>Lessons</MobileLabel>
-        <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
-          <Layers3 size={16} className="text-slate-400" />
+
+        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <Layers3 size={16} />
           {course.lessons}
         </div>
       </div>
 
       <div className="mt-4 lg:mt-0">
         <MobileLabel>Students</MobileLabel>
-        <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
-          <Users size={16} className="text-slate-400" />
+
+        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <Users size={16} />
           {course.students}
         </div>
       </div>
@@ -458,32 +523,42 @@ function CourseRow({
           onClick={() =>
             setOpenMenu(openMenu === course.id ? null : course.id)
           }
-          className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+          className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
         >
           <MoreVertical size={19} />
         </button>
 
         {openMenu === course.id && (
-          <div className="absolute right-5 top-14 z-20 w-48 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-xl lg:right-6 lg:top-16">
-            <ActionButton icon={<Pencil size={16} />}>Edit course</ActionButton>
+          <div className="absolute right-5 top-14 z-20 w-48 overflow-hidden rounded-2xl border border-border bg-popover p-2 text-popover-foreground shadow-xl lg:right-6 lg:top-16">
+
+            <ActionButton icon={<Pencil size={16} />}>
+              Edit course
+            </ActionButton>
 
             <Link
               href={`/admin/courses/${course.id}`}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
             >
               <BookOpen size={16} />
               Manage lessons
             </Link>
 
-            <ActionButton icon={<Copy size={16} />}>Duplicate</ActionButton>
+            <ActionButton icon={<Copy size={16} />}>
+              Duplicate
+            </ActionButton>
 
             <button
               type="button"
               disabled={isUpdating}
               onClick={() => onPublicationChange(course)}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 disabled:cursor-wait disabled:opacity-60"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-accent-foreground disabled:cursor-wait disabled:opacity-60"
             >
-              {course.status === "Published" ? <Archive size={16} /> : <Eye size={16} />}
+              {course.status === "Published" ? (
+                <Archive size={16} />
+              ) : (
+                <Eye size={16} />
+              )}
+
               {isUpdating
                 ? "Actualizando..."
                 : course.status === "Published"
@@ -491,11 +566,11 @@ function CourseRow({
                   : "Publicar curso"}
             </button>
 
-            <div className="my-1 border-t border-slate-100" />
+            <div className="my-1 border-t border-border" />
 
             <button
               onClick={() => onDelete(course.id)}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-red-500 transition hover:bg-red-50"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-destructive transition hover:bg-destructive/10"
             >
               <Trash2 size={16} />
               Delete course
@@ -517,24 +592,29 @@ function StatCard({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
       <div className="mb-5 flex items-start justify-between">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-50 text-purple-500">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
           {icon}
         </div>
       </div>
 
-      <p className="text-2xl font-bold text-slate-900">{value}</p>
-      <p className="mt-1 text-sm font-medium text-slate-400">{label}</p>
+      <p className="text-2xl font-bold text-card-foreground">
+        {value}
+      </p>
+
+      <p className="mt-1 text-sm font-medium text-muted-foreground">
+        {label}
+      </p>
     </div>
   );
 }
 
 function StatusBadge({ status }: { status: CourseStatus }) {
   const styles: Record<CourseStatus, string> = {
-    Published: "bg-emerald-50 text-emerald-600",
-    Draft: "bg-amber-50 text-amber-600",
-    "In progress": "bg-purple-50 text-purple-600",
+    Published: "bg-primary/10 text-primary",
+    Draft: "bg-muted text-muted-foreground",
+    "In progress": "bg-secondary text-secondary-foreground",
   };
 
   return (
@@ -546,9 +626,13 @@ function StatusBadge({ status }: { status: CourseStatus }) {
   );
 }
 
-function MobileLabel({ children }: { children: React.ReactNode }) {
+function MobileLabel({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <p className="mb-1 text-xs font-bold uppercase tracking-wider text-slate-400 lg:hidden">
+    <p className="mb-1 text-xs font-bold uppercase tracking-wider text-muted-foreground lg:hidden">
       {children}
     </p>
   );
@@ -562,7 +646,7 @@ function ActionButton({
   icon: React.ReactNode;
 }) {
   return (
-    <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900">
+    <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-accent-foreground">
       {icon}
       {children}
     </button>
