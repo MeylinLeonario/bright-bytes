@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, BookOpen, CheckCircle2, Mic, PenLine, Play, RefreshCw, Sparkles, Square, Volume2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, CheckCircle2, Mic, Pause, PenLine, Play, RefreshCw, Sparkles, Square, Volume2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -127,18 +127,53 @@ export default function LessonPage() {
   const [lesson, setLesson] = useState<StudentLesson | null>(null);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const activeAudio = useRef<HTMLAudioElement | null>(null);
+  const activeAudioId = useRef<string | null>(null);
 
   useEffect(() => {
     getStudentLesson(lessonId).then(setLesson).catch(() => setError("We couldn't load this lesson. It may not be published yet."));
   }, [lessonId]);
 
-  useEffect(() => () => { activeAudio.current?.pause(); }, []);
-  const playAudio = (url: string | null) => {
-    if (!url) return;
+  useEffect(() => () => {
     activeAudio.current?.pause();
-    activeAudio.current = new Audio(url);
-    void activeAudio.current.play();
+    activeAudio.current = null;
+    activeAudioId.current = null;
+  }, []);
+  const toggleAudio = (id: string, url: string | null) => {
+    if (!url) return;
+
+    if (activeAudioId.current === id && activeAudio.current) {
+      if (!activeAudio.current.paused) {
+        activeAudio.current.pause();
+        setPlayingAudioId(null);
+        return;
+      }
+
+      void activeAudio.current.play()
+        .then(() => {
+          if (activeAudioId.current === id) setPlayingAudioId(id);
+        })
+        .catch(() => {
+          if (activeAudioId.current === id) setPlayingAudioId(null);
+        });
+      return;
+    }
+
+    activeAudio.current?.pause();
+    const nextAudio = new Audio(url);
+    activeAudio.current = nextAudio;
+    activeAudioId.current = id;
+    const clearPlayingAudio = () => {
+      if (activeAudioId.current === id) setPlayingAudioId(null);
+    };
+    nextAudio.addEventListener("ended", clearPlayingAudio, { once: true });
+    nextAudio.addEventListener("error", clearPlayingAudio, { once: true });
+    void nextAudio.play()
+      .then(() => {
+        if (activeAudioId.current === id) setPlayingAudioId(id);
+      })
+      .catch(clearPlayingAudio);
   };
   
   const complete = async () => {
@@ -161,9 +196,9 @@ export default function LessonPage() {
       <h1 className="mt-3 text-3xl font-bold">{lesson.title}</h1><p className="mt-1 text-muted-foreground">{lesson.grammarPoint}</p>
     </section>
     <Card><CardHeader><CardTitle className="flex items-center gap-2"><Sparkles /> Grammar point</CardTitle><CardDescription>{lesson.grammarPoint}</CardDescription></CardHeader><CardContent><div className="whitespace-pre-line text-sm leading-7 text-muted-foreground">{lesson.grammarExplanation}</div></CardContent></Card>
-    <Card><CardHeader><CardTitle className="flex items-center gap-2"><BookOpen /> Vocabulary</CardTitle><CardDescription>{lesson.vocabulary.length} useful words for this lesson</CardDescription></CardHeader><CardContent><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{lesson.vocabulary.map(item => <div key={item.id} className="rounded-xl border p-4"><div className="flex justify-between"><strong>{item.word}</strong>{item.audioUrl && <Button aria-label={`Play ${item.word}`} variant="ghost" size="icon-sm" onClick={() => playAudio(item.audioUrl)}><Volume2 /></Button>}</div><p className="text-xs text-muted-foreground">{item.meaning}</p><Separator className="my-3"/><p className="text-xs leading-5">{item.example}</p></div>)}</div></CardContent></Card>
+    <Card><CardHeader><CardTitle className="flex items-center gap-2"><BookOpen /> Vocabulary</CardTitle><CardDescription>{lesson.vocabulary.length} useful words for this lesson</CardDescription></CardHeader><CardContent><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{lesson.vocabulary.map(item => { const audioId = `vocabulary-${item.id}`; const isPlaying = playingAudioId === audioId; return <div key={item.id} className="rounded-xl border p-4"><div className="flex justify-between"><strong>{item.word}</strong>{item.audioUrl && <Button aria-label={`${isPlaying ? "Pause" : "Play"} ${item.word}`} aria-pressed={isPlaying} variant="ghost" size="icon-sm" onClick={() => toggleAudio(audioId, item.audioUrl)}>{isPlaying ? <Pause /> : <Volume2 />}</Button>}</div><p className="text-xs text-muted-foreground">{item.meaning}</p><Separator className="my-3"/><p className="text-xs leading-5">{item.example}</p></div>; })}</div></CardContent></Card>
     <MiniTranslator />
-    <Card><CardHeader><CardTitle className="flex items-center gap-2"><BookOpen /> Read & listen</CardTitle></CardHeader><CardContent className="space-y-4">{lesson.readings.map((reading, index) => <div key={reading.id} className="rounded-xl border p-5"><div className="flex justify-between"><div><p className="text-xs text-muted-foreground">READING {index + 1}</p><h3 className="font-semibold">{reading.title}</h3></div>{reading.audioUrl && <Button variant="outline" size="sm" onClick={() => playAudio(reading.audioUrl)}><Play /> Listen</Button>}</div><p className="mt-4 whitespace-pre-line text-sm leading-7 text-muted-foreground">{reading.text}</p></div>)}</CardContent></Card>
+    <Card><CardHeader><CardTitle className="flex items-center gap-2"><BookOpen /> Read & listen</CardTitle></CardHeader><CardContent className="space-y-4">{lesson.readings.map((reading, index) => { const audioId = `reading-${reading.id}`; const isPlaying = playingAudioId === audioId; return <div key={reading.id} className="rounded-xl border p-5"><div className="flex justify-between"><div><p className="text-xs text-muted-foreground">READING {index + 1}</p><h3 className="font-semibold">{reading.title}</h3></div>{reading.audioUrl && <Button aria-label={`${isPlaying ? "Pause" : "Play"} ${reading.title}`} aria-pressed={isPlaying} variant="outline" size="sm" onClick={() => toggleAudio(audioId, reading.audioUrl)}>{isPlaying ? <><Pause /> Pause</> : <><Play /> Listen</>}</Button>}</div><p className="mt-4 whitespace-pre-line text-sm leading-7 text-muted-foreground">{reading.text}</p></div>; })}</CardContent></Card>
     <WritingPractice prompt={lesson.writingPrompt} initialAttempts={lesson.writingAttemptsUsed} />
     <SpeakingPractice prompt={lesson.speakingPrompt} initialAttempts={lesson.speakingAttemptsUsed} />
     {error && <p className="text-sm text-red-600">{error}</p>}
