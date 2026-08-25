@@ -48,8 +48,7 @@ export function MiniTranslator() {
   };
 
   return (
-    <Card className="overflow-hidden border-fuchsia-200 bg-gradient-to-br from-fuchsia-50 to-white shadow-sm">
-      <CardContent className="p-5 sm:p-6">
+      <Card className="overflow-hidden border-fuchsia-200 bg-fuchsia-50/60 shadow-sm">      <CardContent className="p-5 sm:p-6">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
           <div className="flex min-w-48 items-center gap-3">
             <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-fuchsia-600 text-white shadow-sm shadow-fuchsia-200">

@@ -7,6 +7,8 @@ import {
   Pencil,
   User,
 } from "lucide-react";
+import { useRef, useState } from "react";
+import Image from "next/image";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,6 +23,15 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 
 export default function ProfilePage() {
+  const [photo, setPhoto] = useState<string | null>(null);
+  const photoInput = useRef<HTMLInputElement>(null);
+
+  function choosePhoto(file?: File) {
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => setPhoto(String(reader.result));
+    reader.readAsDataURL(file);
+  }
   return (
     <main className="min-h-screen bg-muted/30">
       <div className="mx-auto flex max-w-5xl flex-col gap-5 px-5 py-6 md:px-6">
@@ -45,8 +56,8 @@ export default function ProfilePage() {
             <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-4">
                 {/* AVATAR */}
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  <User className="h-7 w-7" />
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-primary-foreground">
+                  {photo ? <Image unoptimized src={photo} alt="Foto de perfil de Mey" width={64} height={64} className="h-full w-full object-cover" /> : <User className="h-7 w-7" />}
                 </div>
 
                 <div>
@@ -68,9 +79,10 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              <Button variant="outline" className="gap-2">
+              <input ref={photoInput} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(event) => choosePhoto(event.target.files?.[0])} />
+              <Button variant="outline" className="gap-2" onClick={() => photoInput.current?.click()}>
                 <Pencil className="h-4 w-4" />
-                Change photo
+                Cambiar foto
               </Button>
             </div>
           </CardContent>

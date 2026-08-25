@@ -128,7 +128,7 @@ export default function SupportPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-primary/20 bg-gradient-to-br from-card to-primary/5 shadow-sm">
+        <Card className="border-primary/20 bg-primary/5 shadow-sm">
           <CardContent className="flex flex-col items-start justify-between gap-5 p-6 sm:flex-row sm:items-center">
 
             <div className="max-w-2xl">
