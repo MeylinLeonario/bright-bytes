@@ -31,6 +31,7 @@ public class StudentDashboardDTO
 
     public ContinueLessonDTO? ContinueLesson { get; set; }
 
+    public List<CourseLessonDTO> CourseLessons { get; set; } = [];
     public List<WeeklyStudyDayDTO> WeeklyGoal { get; set; } = [];
 
     public List<RecentActivityDTO> RecentActivity { get; set; } = [];
@@ -39,6 +40,19 @@ public class StudentDashboardDTO
     public int WeeklyGoalDays { get; set; } = 5;
 
     public List<StudyActivityDayDTO> StudyActivity { get; set; } = [];
+}
+
+public class CourseLessonDTO
+{
+    public Guid Id { get; set; }
+
+    public string Title { get; set; } = string.Empty;
+
+    public string GrammarPoint { get; set; } = string.Empty;
+
+    public int Order { get; set; }
+
+    public bool Completed { get; set; }
 }
 
 public class StudyActivityDayDTO

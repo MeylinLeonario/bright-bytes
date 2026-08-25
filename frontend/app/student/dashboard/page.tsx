@@ -7,23 +7,18 @@ import {
   ArrowRight,
   Award,
   BookOpen,
-  Building2,
   Check,
   ChevronRight,
-  Coffee,
   Coins,
   Crown,
   Flag,
   Flame,
   Gift,
   LockKeyhole,
-  Map,
   Medal,
-  MessageCircle,
   Rocket,
   ShoppingBag,
   Sparkles,
-  Sun,
   Target,
   Trophy,
   Zap,
@@ -48,26 +43,7 @@ import {
 } from "@/lib/api";
 
 
-const levels = [
-  "A2.1",
-  "A2.2",
-  "A2.3",
-  "A2.4",
-  "A2.5",
-];
-
-
-const path = [
-  ["Rutinas diarias", Sun],
-  ["Aventuras pasadas", Map],
-  ["En la cafetería", Coffee],
-  ["Punto de control", Flag],
-  ["Planes futuros", Rocket],
-  ["Por la ciudad", Building2],
-  ["Tus opiniones", MessageCircle],
-  ["Recompensa misteriosa", Gift],
-] as const;
-
+const lessonIcons = [BookOpen, Target, Sparkles, Rocket] as const;
 
 export default function StudentDashboard() {
 
@@ -77,7 +53,7 @@ export default function StudentDashboard() {
     useState<StudentDashboardData | null>(null);
 
   const [loading, setLoading] = useState(true);
-
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
 
@@ -100,14 +76,9 @@ export default function StudentDashboard() {
   const done =
     data?.courseLessonsCompleted ?? 0;
 
-  const total =
-    data?.totalCourseLessons || 40;
-
-  const xp =
-    data?.xp ?? done * 100;
-
-  const bytes =
-    data?.bytes ?? done * 20;
+  const total = data?.totalCourseLessons ?? 0;
+  const xp = data?.xp ?? 0;
+  const bytes = data?.bytes ?? 0;
 
   const today =
     data?.todayLessonsCompleted ?? 0;
@@ -116,12 +87,6 @@ export default function StudentDashboard() {
     data?.thisWeekLessonsCompleted ?? 0;
 
 
-  const level =
-    Math.min(
-      4,
-      Math.floor(done / 8),
-    );
-
 
   const name =
     loading
@@ -129,13 +94,12 @@ export default function StudentDashboard() {
       : user?.name?.split(" ")[0] ??
         "estudiante";
 
-
-  const start =
-    Math.max(
-      0,
-      Math.floor(done / 4) * 4 - 1,
-    );
-
+  const visibleLessons = useMemo(() => {
+    const lessons = data?.courseLessons ?? [];
+    const nextIndex = lessons.findIndex((lesson) => !lesson.completed);
+    const startIndex = Math.max(0, (nextIndex === -1 ? lessons.length : nextIndex) - 2);
+    return lessons.slice(startIndex, startIndex + 8);
+  }, [data]);
 
   const checkpoint =
     Math.min(
@@ -179,7 +143,11 @@ export default function StudentDashboard() {
     <main className="min-h-screen bg-muted/30 text-slate-900">
 
       <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
-
+        {error && (
+          <div role="alert" className="mb-5 rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-sm font-semibold text-destructive">
+            {error}
+          </div>
+        )}
         {/* NAVBAR */}
 
         <nav className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-primary/10 bg-white px-4 py-3 shadow-sm">
@@ -479,38 +447,21 @@ export default function StudentDashboard() {
 
               <div className="relative mt-7 space-y-3 before:absolute before:bottom-7 before:left-[27px] before:top-7 before:w-1 before:bg-primary/10">
 
-                {path.map(
-                  ([title, PathIcon], i) => {
-
-                    const order =
-                      start + i + 1;
-
-                    const complete =
-                      order <= done;
-
-                    const current =
-                      order === done + 1;
-
-                    const locked =
-                      order > done + 1;
-
-                    const special =
-                      title ===
-                        "Punto de control" ||
-                      title ===
-                        "Recompensa misteriosa";
-
+                {visibleLessons.map(
+                  (lesson, i) => {
+                    const PathIcon = lessonIcons[i % lessonIcons.length];
+                    const complete = lesson.completed;
+                    const current = lesson.id === data?.continueLesson?.id;
+                    const locked = !complete && !current;
 
                     return (
 
                       <div
-                        key={`${title}-${order}`}
+                        key={lesson.id}
                         className={`relative flex items-center gap-4 rounded-2xl border p-3 ${
                           current
                             ? "border-primary/40 bg-primary/5 shadow-md"
-                            : special
-                              ? "border-chart-2/20 bg-chart-2/5"
-                              : "border-transparent"
+                            : "border-transparent"
                         }`}
                       >
 
@@ -548,29 +499,16 @@ export default function StudentDashboard() {
                                 : ""
                             }
                           >
-                            {title}
+                            {lesson.title}
                           </b>
-
-
-                          {title ===
-                            "Recompensa misteriosa" && (
-
-                            <span className="ml-2 rounded-full bg-chart-2/10 px-2 py-1 text-[9px] font-black text-chart-2">
-                              SORPRESA
-                            </span>
-
-                          )}
-
 
                           <p className="text-xs text-slate-400">
 
                             {complete
                               ? "Completada · +100 XP"
                               : current
-                                ? `Lección ${order} · Siguiente`
-                                : special
-                                  ? "Te espera una gran recompensa"
-                                  : `Lección ${order}`}
+                                ? `Lección ${lesson.order} · Siguiente`
+                                : `Lección ${lesson.order}`}
 
                           </p>
 
@@ -582,7 +520,7 @@ export default function StudentDashboard() {
 
                           <Link
                             aria-label="Abrir lección"
-                            href={`/student/lessons/${data.continueLesson.id}`}
+                            href={`/student/lessons/${lesson.id}`}
                             className="grid size-9 place-items-center rounded-full bg-primary text-white"
                           >
 
@@ -601,6 +539,12 @@ export default function StudentDashboard() {
                     );
 
                   },
+                )}
+
+                {!loading && visibleLessons.length === 0 && (
+                  <p className="relative rounded-2xl bg-muted p-5 text-sm text-muted-foreground">
+                    Este curso todavía no tiene lecciones publicadas.
+                  </p>
                 )}
 
               </div>
@@ -641,7 +585,7 @@ export default function StudentDashboard() {
                     </p>
 
                     <h2 className="mt-1 text-2xl font-black">
-                      {levels[level]}
+                      {data?.courseLevel || "—"}
                     </h2>
 
                   </div>
@@ -657,8 +601,7 @@ export default function StudentDashboard() {
 
 
                 <Progress
-                  value={
-                    ((done % 8) / 8) * 100
+                  value={data?.courseProgress ?? 0
                   }
                   className="mt-4 bg-white"
                 />
@@ -667,14 +610,14 @@ export default function StudentDashboard() {
                 <div className="mt-2 flex justify-between text-xs text-primary">
 
                   <span>
-                    {done % 8}/8 lecciones
+                    {done}/{total} lecciones
                   </span>
 
                   <b>
 
-                    {level < 4
-                      ? `${levels[level + 1]} siguiente`
-                      : "Nivel máximo"}
+                    {data?.lessonsRemaining
+                      ? `${data.lessonsRemaining} por completar`
+                      : "Curso completado"}
 
                   </b>
 

@@ -575,6 +575,7 @@ public class StudentController : ControllerBase
         var lessonsRemaining = 0;
 
         ContinueLessonDTO? continueLesson = null;
+        var courseLessons = new List<CourseLessonDTO>();
 
         if (currentCourse != null)
         {
@@ -588,6 +589,17 @@ public class StudentController : ControllerBase
             var courseLessonIds = publishedLessons
                 .Select(lesson => lesson.Id)
                 .ToHashSet();
+
+            courseLessons = publishedLessons
+                .Select(lesson => new CourseLessonDTO
+                {
+                    Id = lesson.Id,
+                    Title = lesson.Title,
+                    GrammarPoint = lesson.GrammarPoint,
+                    Order = lesson.Order,
+                    Completed = completedLessonIds.Contains(lesson.Id)
+                })
+                .ToList();
 
             courseLessonsCompleted = completedLessonIds
                 .Count(id => courseLessonIds.Contains(id));
@@ -757,7 +769,7 @@ public class StudentController : ControllerBase
             LessonsRemaining = lessonsRemaining,
 
             ContinueLesson = continueLesson,
-
+            CourseLessons = courseLessons,
             WeeklyGoal = weeklyGoal,
             WeeklyGoalDays = userWeeklyGoalDays,
             StudyActivity = studyActivity,

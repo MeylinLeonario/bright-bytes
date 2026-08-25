@@ -19,6 +19,9 @@ export interface StudentShop {
   balance: number;
   items: Array<{ id: string; name: string; description: string; price: number; owned: boolean }>;
 }
+export interface DashboardCourseLesson extends ContinueLesson {
+  completed: boolean;
+}
 
 export interface ContinueLesson {
   id: string;
@@ -57,6 +60,7 @@ export interface StudentDashboardData {
   courseLevel: string;
   courseLessonsCompleted: number;
   totalCourseLessons: number;
+  courseLessons: DashboardCourseLesson[];
   lessonsRemaining: number;
   continueLesson: ContinueLesson | null;
   weeklyGoal: WeeklyStudyDay[];
