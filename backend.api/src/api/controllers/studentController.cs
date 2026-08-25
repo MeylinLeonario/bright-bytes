@@ -418,6 +418,28 @@ public class StudentController : ControllerBase
 
         var streak = CalculateStreak(completedDates);
 
+        // Gamification values are deliberately derived from durable learning activity so
+        // rewards cannot be lost or inflated by refreshing the dashboard.
+        var today = DateTime.UtcNow.Date;
+        var thisMonday = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
+        var todayLessonsCompleted = completedLessons.Count(progress =>
+            progress.CompletedAt.HasValue && progress.CompletedAt.Value.Date == today);
+        var thisWeekLessonsCompleted = completedLessons.Count(progress =>
+            progress.CompletedAt.HasValue && progress.CompletedAt.Value.Date >= thisMonday);
+        var bestWeekLessons = completedLessons
+            .Where(progress => progress.CompletedAt.HasValue)
+            .GroupBy(progress =>
+            {
+                var date = progress.CompletedAt!.Value.Date;
+                return date.AddDays(-(((int)date.DayOfWeek + 6) % 7));
+            })
+            .Select(group => group.Count())
+            .DefaultIfEmpty(0)
+            .Max();
+        var practiceCount = await _context.ExerciseCorrections.AsNoTracking()
+            .CountAsync(correction => correction.UserId == userId);
+        var xp = lessonsCompleted * 100 + practiceCount * 25;
+        var bytes = lessonsCompleted * 20 + practiceCount * 5;
         // 5. Curso actual
         var currentCourse = await _context.Courses
             .AsNoTracking()
@@ -510,8 +532,6 @@ public class StudentController : ControllerBase
                 };
             }
         }
-
-        var today = DateTime.UtcNow.Date;
 
         var userWeeklyGoalDays = await _context.Users.AsNoTracking()
             .Where(user => user.Id == userId)
@@ -630,6 +650,11 @@ public class StudentController : ControllerBase
         // 6. Respuesta del dashboard
         var dashboard = new StudentDashboardDTO
         {
+            Xp = xp,
+            Bytes = bytes,
+            TodayLessonsCompleted = todayLessonsCompleted,
+            ThisWeekLessonsCompleted = thisWeekLessonsCompleted,
+            BestWeekLessons = bestWeekLessons,
             Streak = streak,
             LessonsCompleted = lessonsCompleted,
             WordsLearned = wordsLearned,

@@ -2,6 +2,15 @@ namespace backend.api.src.application.DTOs;
 
 public class StudentDashboardDTO
 {
+    public int Xp { get; set; }
+
+    public int Bytes { get; set; }
+
+    public int TodayLessonsCompleted { get; set; }
+
+    public int ThisWeekLessonsCompleted { get; set; }
+
+    public int BestWeekLessons { get; set; }
     public int Streak { get; set; }
 
     public int LessonsCompleted { get; set; }

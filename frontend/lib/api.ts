@@ -34,6 +34,11 @@ export interface Achievement {
 export interface StudentDashboardData {
   streak: number;
   lessonsCompleted: number;
+  xp: number;
+  bytes: number;
+  todayLessonsCompleted: number;
+  thisWeekLessonsCompleted: number;
+  bestWeekLessons: number;
   wordsLearned: number;
   courseProgress: number;
   courseTitle: string;
