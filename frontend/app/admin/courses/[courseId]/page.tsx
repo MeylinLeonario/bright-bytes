@@ -17,6 +17,7 @@ import {
   Upload,
   LoaderCircle,
   Trash2,
+  X
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 
@@ -51,6 +52,10 @@ export default function CoursePage() {
 
   const [deletingLessonId, setDeletingLessonId] = useState<string | null>(null);
   const [lessonError, setLessonError] = useState("");
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editedTitle, setEditedTitle] = useState("");
+  const [savingTitle, setSavingTitle] = useState(false);
+  const [editError, setEditError] = useState("");
 
   useEffect(() => {
     async function loadCourse() {
@@ -168,6 +173,27 @@ export default function CoursePage() {
     }
   };
 
+  const handleEditCourse = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSavingTitle(true);
+    setEditError("");
+
+    try {
+      const updatedCourse = await apiFetch<{ title: string }>(
+        `/api/admin/courses/${course.id}`,
+        { method: "PATCH", body: JSON.stringify({ title: editedTitle }) }
+      );
+
+      setCourse({ ...course, title: updatedCourse.title });
+      setShowEditForm(false);
+    } catch (err) {
+      console.error(err);
+      setEditError("No pudimos cambiar el nombre. Inténtalo de nuevo.");
+    } finally {
+      setSavingTitle(false);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-background px-6 py-8 md:px-10 lg:px-14">
       <div className="mx-auto max-w-7xl">
@@ -235,10 +261,18 @@ export default function CoursePage() {
                 <Eye size={17} />
                 Preview
               </button>
-
-              <button className="flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90">
+              
+              <button
+                type="button"
+                onClick={() => {
+                  setEditedTitle(course.title);
+                  setEditError("");
+                  setShowEditForm(true);
+                }}
+                className="flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+              >
                 <Pencil size={17} />
-                Edit course
+                Editar nombre
               </button>
 
               <button className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-card text-muted-foreground transition hover:bg-accent hover:text-accent-foreground">
@@ -281,6 +315,69 @@ export default function CoursePage() {
           />
         </section>
 
+        {showEditForm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-5">
+            <form
+              onSubmit={handleEditCourse}
+              className="w-full max-w-lg rounded-3xl border border-border bg-popover p-6 text-popover-foreground shadow-2xl md:p-8"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <span className="inline-flex rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
+                    Nivel {course.level}
+                  </span>
+                  <h2 className="mt-3 text-2xl font-bold">Editar nombre del curso</h2>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    El nuevo nombre se mostrará a administradores y estudiantes.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Cerrar"
+                  onClick={() => setShowEditForm(false)}
+                  className="rounded-xl p-2 text-muted-foreground transition hover:bg-accent"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <label className="mt-6 block text-sm font-semibold text-foreground">
+                Nombre del curso
+                <input
+                  required
+                  autoFocus
+                  maxLength={120}
+                  value={editedTitle}
+                  onChange={(event) => setEditedTitle(event.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-input bg-background px-4 py-3 text-foreground outline-none transition focus:border-ring focus:ring-4 focus:ring-ring/20"
+                />
+              </label>
+
+              {editError && (
+                <p className="mt-5 rounded-2xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+                  {editError}
+                </p>
+              )}
+
+              <div className="mt-7 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowEditForm(false)}
+                  className="rounded-2xl px-5 py-3 text-sm font-semibold text-muted-foreground transition hover:bg-accent"
+                >
+                  Cancelar
+                </button>
+                <button
+                  disabled={savingTitle}
+                  className="rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
+                >
+                  {savingTitle ? "Guardando..." : "Guardar nombre"}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+        
         <section className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
 
           {/* LESSONS */}

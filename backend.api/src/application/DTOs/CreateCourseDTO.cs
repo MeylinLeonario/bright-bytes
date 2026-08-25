@@ -12,6 +12,10 @@ public class CreateCourseDTO
     [MaxLength(500)]
     public string Description { get; set; } = string.Empty;
 
+    [Required]
+    [MaxLength(10)]
+    public string Level { get; set; } = string.Empty;
+
     public bool IsPublished { get; set; }
 
 }

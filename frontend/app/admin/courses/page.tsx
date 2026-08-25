@@ -49,8 +49,13 @@ export default function AdminCoursesPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  const [editedTitle, setEditedTitle] = useState("");
+  const [savingTitle, setSavingTitle] = useState(false);
+  const [editError, setEditError] = useState("");
 
   const [newCourse, setNewCourse] = useState({
+    level: "A2",
     title: "Everyday English",
     description:
       "Learn to communicate about daily life, experiences, plans and the world around you.",
@@ -106,7 +111,7 @@ export default function AdminCoursesPage() {
         body: JSON.stringify(newCourse),
       });
 
-      setCourses([
+      setCourses((currentCourses) => [
         {
           id: course.id,
           level: course.level,
@@ -116,16 +121,59 @@ export default function AdminCoursesPage() {
           students: 0,
           status: course.isPublished ? "Published" : "In progress",
         },
+        ...currentCourses,
       ]);
 
       setShowCreateForm(false);
+      setNewCourse({
+        level: "",
+        title: "",
+        description: "",
+        isPublished: false,
+      });
     } catch (err) {
       console.error(err);
       setCreateError(
-        "No pudimos crear el curso A2. Inténtalo de nuevo."
+        "No pudimos crear el curso. Revisa los datos e inténtalo de nuevo."
       );
     } finally {
       setCreating(false);
+    }
+  };
+
+  const openEditForm = (course: Course) => {
+    setOpenMenu(null);
+    setEditingCourse(course);
+    setEditedTitle(course.title);
+    setEditError("");
+  };
+
+  const handleEditCourse = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editingCourse) return;
+
+    setSavingTitle(true);
+    setEditError("");
+
+    try {
+      const updatedCourse = await apiFetch<ApiCourse>(
+        `/api/admin/courses/${editingCourse.id}`,
+        { method: "PATCH", body: JSON.stringify({ title: editedTitle }) }
+      );
+
+      setCourses((currentCourses) =>
+        currentCourses.map((course) =>
+          course.id === updatedCourse.id
+            ? { ...course, title: updatedCourse.title }
+            : course
+        )
+      );
+      setEditingCourse(null);
+    } catch (err) {
+      console.error(err);
+      setEditError("No pudimos cambiar el nombre. Inténtalo de nuevo.");
+    } finally {
+      setSavingTitle(false);
     }
   };
 
@@ -219,23 +267,17 @@ export default function AdminCoursesPage() {
             </p>
           </div>
 
-          {courses.length === 0 ? (
-            <button
-              onClick={() => setShowCreateForm(true)}
-              className="flex w-fit items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:-translate-y-0.5 hover:bg-primary/90"
-            >
-              <Plus size={18} />
-              Crear curso A2
-            </button>
-          ) : (
-            <Link
-              href={`/admin/courses/${courses[0].id}`}
-              className="flex w-fit items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:-translate-y-0.5 hover:bg-primary/90"
-            >
-              <BookOpen size={18} />
-              Entrar al curso A2
-            </Link>
-          )}
+          <button
+            onClick={() => {
+              setCreateError("");
+              setShowCreateForm(true);
+            }}
+            className="flex w-fit items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:-translate-y-0.5 hover:bg-primary/90"
+          >
+            <Plus size={18} />
+            Crear nuevo curso
+          </button>
+
         </section>
 
         {/* STATS */}
@@ -313,6 +355,7 @@ export default function AdminCoursesPage() {
                 openMenu={openMenu}
                 setOpenMenu={setOpenMenu}
                 onDelete={handleDelete}
+                onEdit={openEditForm}
                 onPublicationChange={handlePublicationChange}
                 isUpdating={updatingCourseId === course.id}
               />
@@ -347,16 +390,15 @@ export default function AdminCoursesPage() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <span className="inline-flex rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
-                  Nivel A2
+                  Nuevo curso
                 </span>
 
                 <h2 className="mt-3 text-2xl font-bold text-popover-foreground">
-                  Crear el curso A2
+                  Crear un nuevo curso
                 </h2>
 
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Por ahora Bright Bytes tendrá únicamente este curso.
-                  Después podrás entrar y agregar sus lecciones.
+                  Define el nivel y el nombre del curso. Después podrás entrar y agregar sus lecciones.
                 </p>
               </div>
 
@@ -371,6 +413,24 @@ export default function AdminCoursesPage() {
             </div>
 
             <label className="mt-6 block text-sm font-semibold text-foreground">
+              Nivel
+
+              <input
+                required
+                maxLength={10}
+                placeholder="Ej. B1"
+                value={newCourse.level}
+                onChange={(event) =>
+                  setNewCourse((course) => ({
+                    ...course,
+                    level: event.target.value.toUpperCase(),
+                  }))
+                }
+                className="mt-2 w-full rounded-2xl border border-input bg-background px-4 py-3 text-foreground outline-none transition focus:border-ring focus:ring-4 focus:ring-ring/20"
+              />
+            </label>
+
+            <label className="mt-5 block text-sm font-semibold text-foreground">
               Nombre del curso
 
               <input
@@ -440,7 +500,70 @@ export default function AdminCoursesPage() {
                 disabled={creating}
                 className="rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
               >
-                {creating ? "Creando..." : "Crear curso A2"}
+                {creating ? "Creando..." : "Crear curso"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {editingCourse && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-5">
+          <form
+            onSubmit={handleEditCourse}
+            className="w-full max-w-lg rounded-3xl border border-border bg-popover p-6 text-popover-foreground shadow-2xl md:p-8"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <span className="inline-flex rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
+                  Nivel {editingCourse.level}
+                </span>
+                <h2 className="mt-3 text-2xl font-bold">Editar nombre del curso</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  El nuevo nombre se mostrará a administradores y estudiantes.
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Cerrar"
+                onClick={() => setEditingCourse(null)}
+                className="rounded-xl p-2 text-muted-foreground transition hover:bg-accent"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <label className="mt-6 block text-sm font-semibold text-foreground">
+              Nombre del curso
+              <input
+                required
+                autoFocus
+                maxLength={120}
+                value={editedTitle}
+                onChange={(event) => setEditedTitle(event.target.value)}
+                className="mt-2 w-full rounded-2xl border border-input bg-background px-4 py-3 text-foreground outline-none transition focus:border-ring focus:ring-4 focus:ring-ring/20"
+              />
+            </label>
+
+            {editError && (
+              <p className="mt-5 rounded-2xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+                {editError}
+              </p>
+            )}
+
+            <div className="mt-7 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setEditingCourse(null)}
+                className="rounded-2xl px-5 py-3 text-sm font-semibold text-muted-foreground transition hover:bg-accent"
+              >
+                Cancelar
+              </button>
+              <button
+                disabled={savingTitle}
+                className="rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
+              >
+                {savingTitle ? "Guardando..." : "Guardar nombre"}
               </button>
             </div>
           </form>
@@ -457,6 +580,7 @@ function CourseRow({
   onDelete,
   onPublicationChange,
   isUpdating,
+  onEdit
 }: {
   course: Course;
   openMenu: string | null;
@@ -464,6 +588,7 @@ function CourseRow({
   onDelete: (id: string) => void;
   onPublicationChange: (course: Course) => void;
   isUpdating: boolean;
+  onEdit: (course: Course) => void;
 }) {
   return (
     <article className="relative border-b border-border p-5 transition last:border-b-0 hover:bg-accent/50 lg:grid lg:grid-cols-[1.5fr_100px_120px_130px_130px_70px] lg:items-center lg:gap-4 lg:px-6">
@@ -531,9 +656,14 @@ function CourseRow({
         {openMenu === course.id && (
           <div className="absolute right-5 top-14 z-20 w-48 overflow-hidden rounded-2xl border border-border bg-popover p-2 text-popover-foreground shadow-xl lg:right-6 lg:top-16">
 
-            <ActionButton icon={<Pencil size={16} />}>
-              Edit course
-            </ActionButton>
+            <button
+              type="button"
+              onClick={() => onEdit(course)}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+            >
+              <Pencil size={16} />
+              Editar nombre
+            </button>
 
             <Link
               href={`/admin/courses/${course.id}`}

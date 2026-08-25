@@ -45,23 +45,25 @@ namespace backend.api.src.api.controllers
             [FromBody] CreateCourseDTO dto
         )
         {
-            if (string.IsNullOrWhiteSpace(dto.Title) ||
+            if (string.IsNullOrWhiteSpace(dto.Level) ||
+                string.IsNullOrWhiteSpace(dto.Title) ||            
                 string.IsNullOrWhiteSpace(dto.Description))
             {
                 return BadRequest(new
                 {
-                    message = "Title and description are required."
+                    message = "Level, title and description are required."
                 });
             }
 
-            var a2CourseExists = await _context.Courses
-                .AnyAsync(course => course.Level == "A2");
+            var level = dto.Level.Trim().ToUpperInvariant();
+            var courseAtLevelExists = await _context.Courses
+                .AnyAsync(course => course.Level == level);
 
-            if (a2CourseExists)
+            if (courseAtLevelExists)
             {
                 return Conflict(new
                 {
-                    message = "The A2 course already exists."
+                    message = $"A course at level {level} already exists."
                 });
             }
 
@@ -70,7 +72,7 @@ namespace backend.api.src.api.controllers
                 Id = Guid.NewGuid(),
                 Title = dto.Title.Trim(),
                 Description = dto.Description.Trim(),
-                Level = "A2",
+                Level = level,
                 IsPublished = dto.IsPublished
             };
 
@@ -85,6 +87,40 @@ namespace backend.api.src.api.controllers
                 course.Level,
                 course.IsPublished,
                 LessonCount = 0
+            });
+        }
+
+        // PATCH: /api/admin/courses/{courseId}
+        [HttpPatch("courses/{courseId:guid}")]
+        public async Task<IActionResult> UpdateCourse(
+            Guid courseId,
+            [FromBody] UpdateCourseDTO dto
+        )
+        {
+            if (string.IsNullOrWhiteSpace(dto.Title))
+            {
+                return BadRequest(new { message = "Title is required." });
+            }
+
+            var course = await _context.Courses
+                .FirstOrDefaultAsync(course => course.Id == courseId);
+
+            if (course is null)
+            {
+                return NotFound(new { message = "Course not found." });
+            }
+
+            course.Title = dto.Title.Trim();
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                course.Id,
+                course.Title,
+                course.Description,
+                course.Level,
+                course.IsPublished,
+                LessonCount = course.Lessons.Count
             });
         }
 
