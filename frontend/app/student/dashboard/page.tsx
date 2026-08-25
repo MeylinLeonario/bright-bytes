@@ -200,6 +200,13 @@ export default function StudentDashboard() {
 
           <div className="flex items-center gap-3 sm:gap-5">
 
+            <Link
+              href="/student/progress"
+              className="hidden text-sm font-bold text-slate-600 transition-colors hover:text-primary sm:block"
+            >
+              Mi progreso
+            </Link>
+
             <b className="flex items-center gap-1 text-chart-2">
 
               <Flame className="size-5 fill-chart-2/40" />
@@ -673,6 +680,13 @@ export default function StudentDashboard() {
 
                 </div>
 
+                <Link
+                  href="/student/progress"
+                  className="mt-4 flex items-center justify-center gap-2 rounded-xl border border-primary/20 bg-white py-2 text-sm font-bold text-primary"
+                >
+                  Ver progreso completo
+                  <ArrowRight className="size-4" />
+                </Link>
               </CardContent>
 
             </Card>
