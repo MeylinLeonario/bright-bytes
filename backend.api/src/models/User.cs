@@ -24,6 +24,8 @@ namespace backend.api.src.models
     public DateTime? LastActiveAt { get; set; }
 
     public int WeeklyGoalDays { get; set; } = 5;
-    public List<CourseEnrollment> CourseEnrollments { get; set; } = [];
+    public byte[]? ProfilePhoto { get; set; }
+    public string? ProfilePhotoContentType { get; set; }
+    public List<ShopPurchase> ShopPurchases { get; set; } = [];
 }
 }

@@ -16,6 +16,17 @@ namespace BrightEnglish.Api.Controllers;
 [Authorize]
 public class StudentController : ControllerBase
 {
+
+    private static readonly (string Id, string Name, string Description, int Price)[] ShopCatalog =
+    [
+        ("avatar-sky", "Avatar Cielo", "Un avatar inspirado en el cielo", 120),
+        ("frame-cyan", "Marco Cyan", "Un marco brillante para tu perfil", 100),
+        ("title-curious", "Título: Mente curiosa", "Un título para mostrar en tu perfil", 110),
+        ("streak-flame", "Llama de racha", "Personaliza el aspecto de tu racha", 180),
+        ("lesson-confetti", "Confeti", "Celebra cada lección terminada", 190),
+        ("theme-midnight", "Tema Medianoche", "Una estética nocturna para el dashboard", 300)
+    ];
+
     private readonly AppDbContext _context;
     private readonly ExerciseCorrectionService _correctionService;
     private readonly ILogger<StudentController> _logger;
@@ -29,6 +40,83 @@ public class StudentController : ControllerBase
             _correctionService = correctionService;
             _logger = logger;
     }
+
+    [HttpGet("achievements")]
+    public async Task<IActionResult> GetAchievements()
+    {
+        if (!TryGetUserId(out var userId)) return Unauthorized();
+        var completed = await _context.UserProgress.AsNoTracking()
+            .Where(item => item.UserId == userId && item.Completed).ToListAsync();
+        var lessonIds = completed.Select(item => item.LessonId).Distinct().ToList();
+        var words = await _context.VocabularyItems.AsNoTracking()
+            .CountAsync(item => lessonIds.Contains(item.LessonId));
+        var corrections = await _context.ExerciseCorrections.AsNoTracking()
+            .CountAsync(item => item.UserId == userId);
+        var streak = CalculateStreak(completed.Where(item => item.CompletedAt.HasValue)
+            .Select(item => item.CompletedAt!.Value.Date).Distinct().OrderByDescending(item => item).ToList());
+
+        var definitions = new[]
+        {
+            new { Id="first-lesson", Title="Primer paso", Description="Completa tu primera lección.", Category="Lecciones", Target=1, Progress=lessonIds.Count },
+            new { Id="five-lessons", Title="En marcha", Description="Completa 5 lecciones.", Category="Lecciones", Target=5, Progress=lessonIds.Count },
+            new { Id="ten-lessons", Title="Constancia", Description="Completa 10 lecciones.", Category="Lecciones", Target=10, Progress=lessonIds.Count },
+            new { Id="three-streak", Title="En llamas", Description="Estudia 3 días seguidos.", Category="Rachas", Target=3, Progress=streak },
+            new { Id="seven-streak", Title="Semana brillante", Description="Estudia 7 días seguidos.", Category="Rachas", Target=7, Progress=streak },
+            new { Id="ten-words", Title="Coleccionista", Description="Aprende 10 palabras.", Category="Vocabulario", Target=10, Progress=words },
+            new { Id="fifty-words", Title="Gran vocabulario", Description="Aprende 50 palabras.", Category="Vocabulario", Target=50, Progress=words },
+            new { Id="first-practice", Title="Sin miedo a practicar", Description="Envía tu primera práctica para corregir.", Category="Práctica", Target=1, Progress=corrections },
+            new { Id="ten-practices", Title="La práctica hace al maestro", Description="Completa 10 correcciones.", Category="Práctica", Target=10, Progress=corrections }
+        };
+        return Ok(definitions);
+    }
+
+    [HttpGet("shop")]
+    public async Task<IActionResult> GetShop()
+    {
+        if (!TryGetUserId(out var userId)) return Unauthorized();
+        var earned = await CalculateEarnedBytes(userId);
+        var purchases = await _context.ShopPurchases.AsNoTracking()
+            .Where(item => item.UserId == userId).ToListAsync();
+        var spent = purchases.Sum(item => item.PricePaid);
+        var owned = purchases.Select(item => item.ItemId).ToHashSet();
+        return Ok(new
+        {
+            Balance = earned - spent,
+            Items = ShopCatalog.Select(item => new
+            {
+                item.Id, item.Name, item.Description, item.Price, Owned = owned.Contains(item.Id)
+            })
+        });
+    }
+
+    [HttpPost("shop/{itemId}/purchase")]
+    public async Task<IActionResult> PurchaseShopItem(string itemId)
+    {
+        if (!TryGetUserId(out var userId)) return Unauthorized();
+        var item = ShopCatalog.FirstOrDefault(entry => entry.Id == itemId);
+        if (item == default) return NotFound(new { message = "La recompensa no existe." });
+        if (await _context.ShopPurchases.AnyAsync(entry => entry.UserId == userId && entry.ItemId == itemId))
+            return Conflict(new { message = "Ya adquiriste esta recompensa." });
+        var balance = await CalculateEarnedBytes(userId) - await _context.ShopPurchases
+            .Where(entry => entry.UserId == userId).SumAsync(entry => entry.PricePaid);
+        if (balance < item.Price) return Conflict(new { message = "No tienes Bytes suficientes." });
+        _context.ShopPurchases.Add(new ShopPurchase
+        {
+            Id = Guid.NewGuid(), UserId = userId, ItemId = item.Id, PricePaid = item.Price
+        });
+        await _context.SaveChangesAsync();
+        return Ok(new { ItemId = item.Id, Balance = balance - item.Price, Owned = true });
+    }
+
+    private async Task<int> CalculateEarnedBytes(Guid userId)
+    {
+        var lessons = await _context.UserProgress.AsNoTracking()
+            .Where(item => item.UserId == userId && item.Completed)
+            .Select(item => item.LessonId).Distinct().CountAsync();
+        var practices = await _context.ExerciseCorrections.AsNoTracking().CountAsync(item => item.UserId == userId);
+        return lessons * 20 + practices * 5;
+    }
+    
     [HttpGet("courses")]
     public async Task<IActionResult> GetCourses()
     {

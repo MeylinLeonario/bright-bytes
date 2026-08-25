@@ -30,6 +30,10 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<StudyActivity>()
             .HasIndex(activity => new { activity.UserId, activity.LessonId, activity.ActivityDate })
             .IsUnique();
+
+        modelBuilder.Entity<ShopPurchase>()
+            .HasIndex(purchase => new { purchase.UserId, purchase.ItemId })
+            .IsUnique();
     }
     public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options)
@@ -45,4 +49,5 @@ public class AppDbContext : DbContext
     public DbSet<CourseEnrollment> CourseEnrollments => Set<CourseEnrollment>();
     public DbSet<ExerciseCorrection> ExerciseCorrections => Set<ExerciseCorrection>();
     public DbSet<StudyActivity> StudyActivities => Set<StudyActivity>();
+    public DbSet<ShopPurchase> ShopPurchases => Set<ShopPurchase>();
 }

@@ -35,7 +35,6 @@ import {
 } from "@/components/ui/card";
 
 import {
-  Button,
   buttonVariants,
 } from "@/components/ui/button";
 
@@ -769,7 +768,7 @@ export default function StudentDashboard() {
                   </h2>
 
                   <Link
-                    href="/student/progress"
+                    href="/student/achievements"
                     className="text-xs font-bold text-primary"
                   >
                     Ver todos
@@ -858,17 +857,12 @@ export default function StudentDashboard() {
                 </div>
 
 
-                <Button
-                  variant="outline"
-                  className="mt-4 w-full border-primary/20 text-primary"
+                <Link
+                  href="/student/shop"
+                  className={buttonVariants({ variant: "outline", className: "mt-4 w-full border-primary/20 text-primary" })}
                 >
-
-                  Ver recompensas
-
-                  <Sparkles />
-
-                </Button>
-
+                Ver recompensas <Sparkles />
+                </Link>
               </CardContent>
 
             </Card>

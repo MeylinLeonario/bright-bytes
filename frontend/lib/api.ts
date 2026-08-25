@@ -6,6 +6,18 @@ export interface CurrentUser {
   name: string;
   email: string;
   role: string;
+  level: string | null;
+  createdAt: string;
+  profilePhoto: string | null;
+}
+
+export interface StudentAchievement {
+  id: string; title: string; description: string; category: string; target: number; progress: number;
+}
+
+export interface StudentShop {
+  balance: number;
+  items: Array<{ id: string; name: string; description: string; price: number; owned: boolean }>;
 }
 
 export interface ContinueLesson {
@@ -208,4 +220,24 @@ export function updateWeeklyGoal(days: number) {
 
 export function getReviewLessons() {
   return apiFetch<ReviewLesson[]>("/api/student/review-lessons");
+}
+
+export function updateCurrentUser(name: string, photo: File | null) {
+  const form = new FormData();
+  form.append("name", name);
+  if (photo) form.append("photo", photo);
+  return apiFetch<CurrentUser>("/api/auth/me", { method: "PUT", body: form });
+}
+
+export function getStudentAchievements() {
+  return apiFetch<StudentAchievement[]>("/api/student/achievements");
+}
+
+export function getStudentShop() {
+  return apiFetch<StudentShop>("/api/student/shop");
+}
+
+export function purchaseShopItem(itemId: string) {
+  return apiFetch<{ itemId: string; balance: number; owned: boolean }>(
+    `/api/student/shop/${encodeURIComponent(itemId)}/purchase`, { method: "POST" });
 }
